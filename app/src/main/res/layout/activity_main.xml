@@ -20,7 +20,7 @@
     <TextView
         android:id="@+id/textServerInfo"
         android:layout_width="332dp"
-        android:layout_height="145dp"
+        android:layout_height="95dp"
         android:layout_marginLeft="26dp"
         android:layout_marginTop="66dp"
         android:text="Server info here"
@@ -29,10 +29,10 @@
 
     <Button
         android:id="@+id/buttonConnect"
-        android:layout_width="230dp"
-        android:layout_height="58dp"
+        android:layout_width="232dp"
+        android:layout_height="55dp"
         android:layout_marginLeft="77dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="18dp"
         android:text="Connect to server"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textServerInfo"/>
@@ -40,12 +40,23 @@
     <Button
         android:id="@+id/buttonRefresh"
         android:layout_width="232dp"
-        android:layout_height="60dp"
+        android:layout_height="53dp"
         android:layout_marginLeft="76dp"
-        android:layout_marginTop="27dp"
+        android:layout_marginTop="15dp"
         android:text="Refresh"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/buttonConnect"
+        />
+
+    <Button
+        android:id="@+id/buttonCommandHello"
+        android:layout_width="229dp"
+        android:layout_height="58dp"
+        android:layout_marginLeft="77dp"
+        android:layout_marginTop="15dp"
+        android:text="Say hello"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/buttonRefresh"
         />
 
 </android.support.constraint.ConstraintLayout>

@@ -3,6 +3,7 @@ package com.lab309.computerRemote;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.os.Build;
 
 import android.view.View;
 import android.widget.Button;
@@ -130,9 +131,10 @@ public class MainActivity extends AppCompatActivity {
 		try {
 			Button buttonConnect = (Button)findViewById(R.id.buttonConnect);
 			Button buttonRefresh = (Button)findViewById(R.id.buttonRefresh);
+			Button buttonCommandHello = (Button)findViewById(R.id.buttonCommandHello);
 
 			this.textServerInfo = new TextViewManager( (TextView)findViewById(R.id.textServerInfo), new Handler() );
-			this.client = new Client();
+			this.client = new Client(Build.MODEL);
 
 			this.statusRefreshing = false;
 			this.statusConnecting = false;
@@ -151,7 +153,14 @@ public class MainActivity extends AppCompatActivity {
 			buttonRefresh.setOnClickListener( new View.OnClickListener () {
 				@Override
 				public void onClick (View v) {
-				MainActivity.this.refreshAvailableConnections();
+					MainActivity.this.refreshAvailableConnections();
+				}
+			});
+
+			buttonCommandHello.setOnClickListener (new View.OnClickListener () {
+				@Override
+				public void onClick (View v) {
+					MainActivity.this.client.executeLine(0, "echo Hello");
 				}
 			});
 
@@ -164,5 +173,6 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onStop () {
 		super.onStop();
+		this.client.clearConnections();
 	}
 }

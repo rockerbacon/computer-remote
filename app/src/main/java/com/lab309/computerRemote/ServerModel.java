@@ -2,6 +2,7 @@ package com.lab309.computerRemote;
 
 import com.lab309.network.MacAddress;
 import com.lab309.network.UDPClient;
+import com.lab309.network.UDPDatagram;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -58,5 +59,13 @@ public class ServerModel {
 			this.password = password;
 		}
 
+	}
+
+	public void send (UDPDatagram datagram) throws IOException {
+		this.clientToServer.send(datagram);
+	}
+
+	public void disconnect () {
+		this.clientToServer.close();
 	}
 }

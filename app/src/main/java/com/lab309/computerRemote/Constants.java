@@ -21,4 +21,16 @@ public class Constants {
 	public static final int maxPasswordString = 37*SizeConstants.sizeOfChar;
 	public static final int broadcastBufferSize = applicationId.length + SizeConstants.sizeOfByte + maxPasswordString;
 	public static final int commandBufferSize = SizeConstants.sizeOfInt+257*SizeConstants.sizeOfChar;
+
+	/*COMANDOS*/
+
+	/* Variavel: commandExecuteLine
+	 * Campo de dados: | String s |
+	 *
+	 * Executa um processo com seus devidos argumentos de acordo com s. s eh uma string identica a uma string passada manualmente em um terminal
+	 * A execucao de processos sem uma interface grafica que requeiram entrada e saida de usuario poderao bloquear indefinidamente
+	 *
+	 */
+	public static final int commandExecuteLine = 1;
+
 }

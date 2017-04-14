@@ -19,6 +19,7 @@ import java.util.ArrayList;
 public class Client {
 
 	/*ATTRIBUTES*/
+	private String name;
 	private InetAddress ip;
 	private InetAddress broadcastIp;
 	private ArrayList<ServerModel> availableServers;
@@ -27,7 +28,8 @@ public class Client {
 	private final Object connectedServersLock = new Object();
 
 	/*CONSTRUCTORS*/
-	public Client () throws IOException {
+	public Client (String name) throws IOException {
+		this.name = name;
 		this.ip = NetInfo.thisMachineIpv4();
 		this.broadcastIp = NetInfo.broadcastIp();
 		if (broadcastIp == null || this.ip == null) {
@@ -167,9 +169,49 @@ public class Client {
 
 	}
 
+	public void executeLine (final int index, final String line) {
+		new Thread (new Runnable () {
+			@Override
+			public void run () {
+				try {
+					UDPDatagram command = new UDPDatagram (MacAddress.SIZE + SizeConstants.sizeOfString(Client.this.name) + SizeConstants.sizeOfInt + SizeConstants.sizeOfString(line));
+					ServerModel server;
+					synchronized (Client.this.connectedServersLock) {
+						server = Client.this.connectedServers.get(index);
+					}
+
+					command.pushByteArray(server.getMacAddress().getAddress(), 0, server.getMacAddress().getAddress().length);
+					command.pushString(Client.this.name);
+					command.pushInt(Constants.commandExecuteLine);
+					command.pushString(line);
+
+					server.send(command);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
+	}
+
 	public void clearAvailableServers () {
 		synchronized (this.availableServersLock) {
 			this.availableServers.clear();
+		}
+	}
+
+	public void clearConnections () {
+		synchronized (this.connectedServersLock) {
+			for (ServerModel server : this.connectedServers) {
+				server.disconnect();
+			}
+			this.connectedServers.clear();
+		}
+	}
+
+	public void disconnect (int index) {
+		synchronized (this.connectedServersLock) {
+			this.connectedServers.get(index).disconnect();
+			this.connectedServers.remove(index);
 		}
 	}
 }

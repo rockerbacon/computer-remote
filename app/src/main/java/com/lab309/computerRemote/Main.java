@@ -14,7 +14,7 @@ public class Main {
 
 			server.waitForConnection();
 
-			System.out.println("\nServer is waiting for a connection, press enter to stop waiting");
+			System.out.println("\nServer is waiting for connections and commands, press enter to stop waiting");
 
 			wait.nextLine();
 

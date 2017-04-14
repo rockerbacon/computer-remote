@@ -10,6 +10,8 @@ import com.lab309.network.NetInfo;
 
 import com.lab309.general.SizeConstants;
 
+import com.lab309.os.Terminal;
+
 import java.io.IOException;
 import java.net.SocketException;
 
@@ -38,6 +40,15 @@ import java.net.SocketException;
  *					Senao:
  *						-int contendo o valor -1;
  *
+ *	Para recebimento de comandos serve o seguinte protocolo
+ *		1-Cliente envia packet pela porta de Server.commandsServer para o ip do servidor, contendo:
+ *			1.1-MacAddress do servidor;
+ *			1.2-String contendo nome do cliente
+ *			1.3-int contendo o id do comando (vide classe Constants);
+ *			1.4-data adicional para o comando (vide classe Constants, esse campo eh referenciado como "campo de data");
+ *		2-Se Server.mac == MacAddress em 1.1:
+ *			-Servidor executa comando;
+ *
  */
 public class Server {
 
@@ -49,8 +60,9 @@ public class Server {
 
 	private UDPServer broadcastServer;
 	private UDPServer commandsServer;
-
 	private boolean waitingForConnection;
+
+	private Terminal terminal;
 
 	/*CONSTRUCTORS*/
 	public Server (String password) throws IOException {
@@ -65,6 +77,10 @@ public class Server {
 		this.commandsServer = new UDPServer (Constants.commandBufferSize);
 
 		this.waitingForConnection = false;
+
+		this.terminal = new Terminal(System.out);
+
+		this.waitForCommand();
 	}
 
 	/*GETTERS*/
@@ -81,77 +97,78 @@ public class Server {
 	}
 
 	/*METHODS*/
-	private final Thread waitForRequest = new Thread ( new Runnable () {
-		@Override
-		public void run () {
-
-			UDPDatagram received;
-
-			try {
-
-				while (Server.this.broadcastServer != null) {
-
-					//espera anuncio de conexao
-					received = Server.this.broadcastServer.receiveExpected(Constants.applicationId);
-
-					//verifica se packet eh destinado a aplicacao
-					UDPClient client;
-					InetAddress connectingDeviceIp;
-					byte request;
-
-					//criar client para ip do disposivo que quer se conectar
-					connectingDeviceIp = received.getSender();
-					request = received.retrieveByte();
-					client = new UDPClient(Constants.broadcastPort, connectingDeviceIp);
-
-					if (request == Constants.identityRequest) {
-
-						UDPDatagram name = new UDPDatagram(Constants.applicationId.length + SizeConstants.sizeOfString(Server.this.name) + SizeConstants.sizeOfBoolean);
-
-						//preparar datagrama para envio
-						name.pushByteArray(Constants.applicationId);
-						name.pushString(Server.this.name);
-						name.pushBoolean (!Server.this.password.equals(""));
-
-						client.send(name);
-
-					} else if (request == Constants.connectionRequest) {
-
-						UDPDatagram port = new UDPDatagram(Constants.applicationId.length + SizeConstants.sizeOfInt + MacAddress.SIZE);
-						String password;
-
-						password = received.retrieveString();
-
-						port.pushByteArray(Constants.applicationId);
-						//confirma ou recusa conexao
-						if (password.equals(Server.this.password) || Server.this.password.length() == 0) {
-							//empacota porta e mac address para envio
-							port.pushInt(Server.this.commandsServer.getPort());
-							port.pushByteArray(Server.this.mac.getAddress(), 0, MacAddress.SIZE);
-						} else {
-							//empacota porta invalida
-							port.pushInt(-1);
-						}
-
-						client.send(port);
-						client.close();
-					
-					}
-
-				}
-
-			} catch (SocketException e) {
-				System.out.println (e.getMessage());
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	});
 	public void waitForConnection () throws IOException {
 		if (!this.waitingForConnection) {
 			this.broadcastServer = new UDPServer(Constants.broadcastPort, Constants.broadcastBufferSize);
 			this.waitingForConnection = true;
-			this.waitForRequest.start();
+
+			new Thread ( new Runnable () {
+				@Override
+				public void run () {
+
+					UDPDatagram received;
+
+					try {
+
+						while (Server.this.broadcastServer != null) {
+
+							//espera anuncio de conexao
+							received = Server.this.broadcastServer.receiveExpected(Constants.applicationId);
+
+							//verifica se packet eh destinado a aplicacao
+							UDPClient client;
+							InetAddress connectingDeviceIp;
+							byte request;
+
+							//criar client para ip do disposivo que quer se conectar
+							connectingDeviceIp = received.getSender();
+							request = received.retrieveByte();
+							client = new UDPClient(Constants.broadcastPort, connectingDeviceIp);
+
+							if (request == Constants.identityRequest) {
+
+								UDPDatagram name = new UDPDatagram(Constants.applicationId.length + SizeConstants.sizeOfString(Server.this.name) + SizeConstants.sizeOfBoolean);
+
+								//preparar datagrama para envio
+								name.pushByteArray(Constants.applicationId);
+								name.pushString(Server.this.name);
+								name.pushBoolean (!Server.this.password.equals(""));
+
+								client.send(name);
+
+							} else if (request == Constants.connectionRequest) {
+
+								UDPDatagram port = new UDPDatagram(Constants.applicationId.length + SizeConstants.sizeOfInt + MacAddress.SIZE);
+								String password;
+
+								password = received.retrieveString();
+
+								port.pushByteArray(Constants.applicationId);
+								//confirma ou recusa conexao
+								if (password.equals(Server.this.password) || Server.this.password.length() == 0) {
+									//empacota porta e mac address para envio
+									port.pushInt(Server.this.commandsServer.getPort());
+									port.pushByteArray(Server.this.mac.getAddress(), 0, MacAddress.SIZE);
+								} else {
+									//empacota porta invalida
+									port.pushInt(-1);
+								}
+
+								client.send(port);
+								client.close();
+					
+							}
+
+						}
+
+					} catch (SocketException e) {
+						System.out.println (e.getMessage());
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}).start();
+
 		}
 	}
 
@@ -161,6 +178,45 @@ public class Server {
 			this.broadcastServer = null;
 			this.waitingForConnection = false;
 		}
+	}
+
+	private void waitForCommand () throws IOException {
+		new Thread ( new Runnable () {
+			@Override
+			public void run () {
+
+				try {
+
+					UDPDatagram received;
+					String clientName;
+					int command;
+
+					while (true) {
+
+						received = Server.this.commandsServer.receiveExpected(Server.this.mac.getAddress());
+
+						clientName = received.retrieveString();
+						command = received.retrieveInt();
+
+						switch (command) {
+							case Constants.commandExecuteLine:
+								String line = received.retrieveString();
+								Server.this.terminal.execute(clientName + '@' + received.getSender().getHostAddress(), line);
+							break;
+						}
+
+					}
+
+				} catch (SocketException e) {
+					System.out.println(e.getMessage());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
+			}
+
+
+		}).start();
 	}
 
 	public void close () {
