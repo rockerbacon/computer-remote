@@ -15,20 +15,6 @@ public class TextViewManager {
 	private TextView textView;
 	private Handler handler;
 
-	/*RUNNABLES*/
-	private class Updater implements Runnable {
-		private String text;
-
-		private Updater (String text) {
-			this.text = text;
-		}
-
-		@Override
-		public void run () {
-			TextViewManager.this.textView.setText(this.text);
-		}
-	}
-
 	/*CONSTRUCTORS*/
 	public TextViewManager (TextView textView, Handler handler) {
 		this.textView = textView;
@@ -41,8 +27,22 @@ public class TextViewManager {
 	}
 
 	/*METHODS*/
-	public void setText (String text) {
-		this.handler.post(new Updater(text));
+	public void setText (final String text) {
+		this.handler.post(new Runnable() {
+			@Override
+			public void run () {
+				TextViewManager.this.textView.setText(text);
+			}
+		});
+	}
+
+	public void setVisibility (final int visibility) {
+		this.handler.post(new Runnable() {
+			@Override
+			public void run () {
+				TextViewManager.this.textView.setVisibility(visibility);
+			}
+		});
 	}
 
 }

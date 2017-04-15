@@ -1,6 +1,6 @@
 package com.lab309.network;
 
-import java.io.IOException;
+import java.io.Serializable;
 
 /**
  * Class for managing a device's macaddress
@@ -8,7 +8,7 @@ import java.io.IOException;
  * Created by Vitor Andrade dos Santos on 3/21/17.
  */
 
-public class MacAddress {
+public class MacAddress implements Serializable {
 
 	public static final int SIZE = 6;
 

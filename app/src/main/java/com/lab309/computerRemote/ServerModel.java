@@ -4,6 +4,8 @@ import com.lab309.network.MacAddress;
 import com.lab309.network.UDPClient;
 import com.lab309.network.UDPDatagram;
 
+import java.io.Serializable;
+
 import java.io.IOException;
 import java.net.InetAddress;
 
@@ -11,13 +13,13 @@ import java.net.InetAddress;
  * Created by Vitor Andrade dos Santos on 4/13/17.
  */
 
-public class ServerModel {
+public class ServerModel implements Serializable {
 	/*ATTRIBUTES*/
 	private String name;
 	private InetAddress ip;
 	private boolean passwordProtected;
 	private MacAddress mac;
-	private UDPClient clientToServer;
+	private transient UDPClient clientToServer;
 	private String password;
 
 	/*CONSTRUTORS*/
@@ -41,6 +43,10 @@ public class ServerModel {
 
 	public MacAddress getMacAddress () {
 		return this.mac;
+	}
+
+	public String getPassword () {
+		return this.password;
 	}
 
 	public boolean isPasswordProtected () {

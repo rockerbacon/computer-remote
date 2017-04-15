@@ -9,6 +9,7 @@ import com.lab309.network.UDPDatagram;
 import com.lab309.general.SizeConstants;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.util.ArrayList;
 
@@ -16,16 +17,16 @@ import java.util.ArrayList;
  * Created by Vitor Andrade dos Santos on 4/13/17.
  */
 
-public class Client {
+public class Client implements Serializable {
 
 	/*ATTRIBUTES*/
 	private String name;
 	private InetAddress ip;
 	private InetAddress broadcastIp;
-	private ArrayList<ServerModel> availableServers;
+	private transient ArrayList<ServerModel> availableServers;
 	private ArrayList<ServerModel> connectedServers;
-	private final Object availableServersLock = new Object();
-	private final Object connectedServersLock = new Object();
+	private transient final Object availableServersLock = new Object();
+	private transient final Object connectedServersLock = new Object();
 
 	/*CONSTRUCTORS*/
 	public Client (String name) throws IOException {
@@ -40,6 +41,10 @@ public class Client {
 	}
 
 	/*GETTERS*/
+	public String getName () {
+		return this.name;
+	}
+
 	public int getAvailableServersCount () {
 		synchronized (this.availableServersLock) {
 			return this.availableServers.size();
@@ -114,17 +119,14 @@ public class Client {
 	 *		UDPServer.STATUS_TIMEOUT se servidor nao respondeu
 	 *
 	 */
-	public int connectToServer (int index, String password) throws IOException {
+	public int connectToServer (ServerModel server, String password) throws IOException {
 
 		UDPServer listener;
 		UDPClient client;
-		ServerModel server;
 		int serverPort;
 		MacAddress serverMac;
 		UDPDatagram request = new UDPDatagram(Constants.applicationId.length + SizeConstants.sizeOfByte + SizeConstants.sizeOfString(password));
 		UDPDatagram answer;
-
-		server = this.availableServers.get(index);
 
 		//preparar request
 		request.pushByteArray(Constants.applicationId);
@@ -166,6 +168,41 @@ public class Client {
 		}
 
 		return UDPServer.STATUS_SUCCESSFUL;
+
+	}
+
+	public void checkConnections () throws IOException {
+		synchronized (this.connectedServersLock) {
+
+			this.clearAvailableServers();
+			this.requestIdentities();
+
+			for (int i = 0; i < this.connectedServers.size(); i++) {
+
+				ServerModel server = this.connectedServers.remove(i);
+
+				try {
+					if (this.connectToServer(server, server.getPassword()) != UDPServer.STATUS_SUCCESSFUL) {
+						int j;
+						ServerModel search;
+
+						j = 0;
+						do {
+							search = this.availableServers.get(j);
+							j++;
+						} while (j < this.availableServers.size() && !search.getName().equals(server.getName()));
+
+						if (search.getName().equals(server.getName())) {
+							this.connectToServer(search, server.getPassword());
+						}
+					}
+				} catch (IOException e) {
+					this.connectedServers.remove(i);
+				}
+
+			}
+
+		}
 
 	}
 
