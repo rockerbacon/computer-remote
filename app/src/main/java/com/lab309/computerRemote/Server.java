@@ -2,6 +2,8 @@ package com.lab309.computerRemote;
 
 import java.net.InetAddress;
 
+import java.awt.robot;
+
 import com.lab309.network.UDPClient;
 import com.lab309.network.UDPServer;
 import com.lab309.network.UDPDatagram;
@@ -11,6 +13,9 @@ import com.lab309.network.NetInfo;
 import com.lab309.general.SizeConstants;
 
 import com.lab309.os.Terminal;
+import ilarkesto.media.Audio;
+
+import javax.sound.sampled.FloatControl;
 
 import java.io.IOException;
 import java.net.SocketException;
@@ -63,6 +68,8 @@ public class Server {
 	private boolean waitingForConnection;
 
 	private Terminal terminal;
+	private Robot robot;
+	private FloatControl masterVolume;
 
 	/*CONSTRUCTORS*/
 	public Server (String password) throws IOException {
@@ -79,6 +86,8 @@ public class Server {
 		this.waitingForConnection = false;
 
 		this.terminal = new Terminal(System.out);
+		this.robot = new Robot();
+		this.masterVolume = Audio.getVolumeControl(Audio.getMasterOutputLine());
 
 		this.waitForCommand();
 	}
@@ -202,6 +211,18 @@ public class Server {
 							case Constants.commandExecuteLine:
 								String line = received.retrieveString();
 								Server.this.terminal.execute(clientName + '@' + received.getSender().getHostAddress(), line);
+							break;
+							case Constants.commandKeyboardPress:
+								int key = received.retrieveInt();
+								Server.this.robot.keyPress(key);
+							break;
+							case Constants.commandKeyboardRelease:
+								int key = received.retrieveInt();
+								Server.this.robot.keyRelease(key);
+							break;
+							case Constants.commandSetSoundLevel:
+								float level = received.retrieveFloat();
+								this.masterVolume.setValue(level);
 							break;
 						}
 
