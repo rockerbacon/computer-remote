@@ -206,21 +206,102 @@ public class Client implements Serializable {
 
 	}
 
+	private UDPDatagram prepareCommandDatagram (ServerModel server, int commandDataSize) {
+		UDPDatagram command = new UDPDatagram (MacAddress.SIZE + SizeConstants.sizeOfString(this.name) + SizeConstants.sizeOfInt + commandDataSize);
+
+		command.pushByteArray(server.getMacAddress().getAddress(), 0, server.getMacAddress().getAddress().length);
+		command.pushString(this.name);
+
+		return command;
+	}
+
 	public void executeLine (final int index, final String line) {
 		new Thread (new Runnable () {
 			@Override
 			public void run () {
 				try {
-					UDPDatagram command = new UDPDatagram (MacAddress.SIZE + SizeConstants.sizeOfString(Client.this.name) + SizeConstants.sizeOfInt + SizeConstants.sizeOfString(line));
+					UDPDatagram command;
 					ServerModel server;
 					synchronized (Client.this.connectedServersLock) {
 						server = Client.this.connectedServers.get(index);
 					}
 
-					command.pushByteArray(server.getMacAddress().getAddress(), 0, server.getMacAddress().getAddress().length);
-					command.pushString(Client.this.name);
+					command = Client.this.prepareCommandDatagram(server, SizeConstants.sizeOfString(line));
+
 					command.pushInt(Constants.commandExecuteLine);
 					command.pushString(line);
+
+					server.send(command);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
+	}
+
+	public void keyboardPress (final int index, final int keycode) {
+		new Thread ( new Runnable() {
+			@Override
+			public void run() {
+				try {
+					UDPDatagram command;
+					ServerModel server;
+					synchronized (Client.this.connectedServersLock) {
+						server = Client.this.connectedServers.get(index);
+					}
+
+					command = Client.this.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
+
+					command.pushInt(Constants.commandKeyboardPress);
+					command.pushInt(keycode);
+
+					server.send(command);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
+	}
+
+	public void keyboardRelease (final int index, final int keycode) {
+		new Thread ( new Runnable() {
+			@Override
+			public void run() {
+				try {
+					UDPDatagram command;
+					ServerModel server;
+					synchronized (Client.this.connectedServersLock) {
+						server = Client.this.connectedServers.get(index);
+					}
+
+					command = Client.this.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
+
+					command.pushInt(Constants.commandKeyboardRelease);
+					command.pushInt(keycode);
+
+					server.send(command);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
+	}
+
+	public void setSound (final int index, final float soundLevel) {
+		new Thread ( new Runnable() {
+			@Override
+			public void run() {
+				try {
+					UDPDatagram command;
+					ServerModel server;
+					synchronized (Client.this.connectedServersLock) {
+						server = Client.this.connectedServers.get(index);
+					}
+
+					command = Client.this.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
+
+					command.pushInt(Constants.commandSetSoundLevel);
+					command.pushFloat(soundLevel);
 
 					server.send(command);
 				} catch (IOException e) {

@@ -33,4 +33,25 @@ public class Constants {
 	 */
 	public static final int commandExecuteLine = 1;
 
+	/* Variavel: commandKeyboardPress
+	 * Campo de dados: | int code |
+	 *
+	 * Pressiona tecla definida por code
+	 */
+	public static final int commandKeyboardPress = 2;
+
+	/* Variavel: commandKeyboardPress
+	 * Campo de dados: | int code |
+	 *
+	 * Solta tecla definida por code
+	 *
+	 */
+	public static final int commandKeyboardRelease = 3;
+
+	/* Vriavel: commandSetSoundLevel
+	 * Campo de dados: | float level |
+	 *
+	 * Define nivel de volume como o dado pelo parametro level
+	 */
+	public static final int commandSetSoundLevel = 4;
 }

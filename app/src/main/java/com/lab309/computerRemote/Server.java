@@ -18,7 +18,7 @@ import java.net.SocketException;
 /*
  *	Classe Server eh responsavel por receber e executar comandos.
  *	Servidor possui um UDPServer conectado a uma porta de broadcasting, fixa e determinada em Constants.broadcastPort, por onde recebe solicitacoes de conexao (Server.broadcastServer).
- *	Servidor possui um UDPServer conectado a uma porta qualquer que estaja disponivel no momento da instanciacao do objeto da classe por onde recebe comandos a serem executados (Server.commandsServer).
+ *	Servidor possui um UDPServer conectado a uma porta qualquer que esteja disponivel no momento da instanciacao do objeto da classe por onde recebe comandos a serem executados (Server.commandsServer).
  *	Servidor possui um protocolo de handshaking:
  *		1-Cliente envia packet pela porta Constants.broadcastPort para o ip de broadcasting da rede contendo, nessa ordem:
  *			1.1-String Constants.applicationId;
