@@ -1,30 +1,29 @@
 package com.lab309.network;
 
-import java.util.Scanner;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.Socket;
 
 /**
- * Classe para envio e recebimento de dados em uma conexao
+ * Classe para envio e recebimento de dados em uma conexao TCP
  *
  * Created by Vitor Andrade dos Santos on 7/1/17.
  */
 
-public class TCPClient {
+public class TCPConnection {
 
 	/*ATTRIBUTES*/
 	private Socket connection;
 	private DataOutputStream outputStream;
-	private Scanner inputStream;
+	private DataInputStream inputStream;
 
 	/*METHODS*/
-	public TCPClient(int port, InetAddress address, String mode) throws IOException {
+	public TCPConnection(int port, InetAddress address, String mode) throws IOException {
 		this.connection = new Socket(address, port);
 		this.outputStream = new DataOutputStream(this.connection.getOutputStream());
-		this.inputStream = new Scanner(this.connection.getInputStream());
+		this.inputStream = new DataInputStream(this.connection.getInputStream());
 	}
 
 	/*SEND*/
@@ -40,8 +39,23 @@ public class TCPClient {
 		this.outputStream.writeChar(c);
 	}
 
+	public void sendLatinChar (char c) throws IOException {
+		this.outputStream.writeByte((byte)c);
+	}
+
+	public void sendLatinString (String str) throws IOException {
+		int i;
+		for (i = 0; i < str.length(); i++) {
+			this.outputStream.writeByte((byte)str.charAt(i));
+		}
+		this.outputStream.writeByte((byte)0);
+	}
+
 	public void sendString (String str) throws IOException {
-		this.outputStream.writeChars(str);
+		for (int i = 0; i < str.length(); i++) {
+			this.outputStream.writeChar(str.charAt(i));
+		}
+		this.outputStream.writeChar((char)0);
 	}
 
 	public void sendDouble (double lf) throws IOException {
@@ -69,5 +83,72 @@ public class TCPClient {
 	}
 
 	/*RECEIVE*/
-	public
+	public byte[] readBytes(byte[] b, int off, int len) throws IOException {
+		this.inputStream.read(b, off, len);
+		return b;
+	}
+
+	public boolean readBoolean() throws IOException {
+		return this.inputStream.readBoolean();
+	}
+
+	public byte readByte() throws IOException {
+		return this.inputStream.readByte();
+	}
+
+	public char readChar() throws IOException {
+		return this.inputStream.readChar();
+	}
+
+	public char readLatinChar() throws IOException {
+		return (char)(0xFF & this.inputStream.readByte());
+	}
+
+	public String readLatinString() throws IOException {
+		StringBuilder string = new StringBuilder();
+		char c;
+
+		c = (char)(0xFF & this.inputStream.readByte());
+		while (c != 0) {
+			string.append(c);
+			c = (char)(0xFF & this.inputStream.readByte());
+		}
+
+		return new String(string);
+	}
+
+	public String readString() throws IOException {
+		StringBuilder string = new StringBuilder();
+		char c;
+
+		c = this.inputStream.readChar();
+		while (c != 0) {
+			string.append(c);
+			c = this.inputStream.readChar();
+		}
+
+		return new String(string);
+	}
+
+	public void readDouble() throws IOException {
+		this.inputStream.readDouble();
+	}
+
+	public void readFloat() throws IOException {
+		this.inputStream.readFloat();
+	}
+
+	public void readInt() throws IOException {
+		this.inputStream.readInt();
+	}
+
+	public void readLong() throws IOException {
+		this.inputStream.readLong();
+	}
+
+	public void readShort() throws IOException {
+		this.inputStream.readShort();
+	}
+
+	public void
 }

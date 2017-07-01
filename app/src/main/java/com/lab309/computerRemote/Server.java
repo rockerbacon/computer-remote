@@ -2,7 +2,7 @@ package com.lab309.computerRemote;
 
 import java.net.InetAddress;
 
-import java.awt.robot;
+import java.awt.Robot;
 
 import com.lab309.network.UDPClient;
 import com.lab309.network.UDPServer;
@@ -18,6 +18,7 @@ import ilarkesto.media.Audio;
 import javax.sound.sampled.FloatControl;
 
 import java.io.IOException;
+import java.awt.AWTException;
 import java.net.SocketException;
 
 /*
@@ -72,7 +73,7 @@ public class Server {
 	private FloatControl masterVolume;
 
 	/*CONSTRUCTORS*/
-	public Server (String password) throws IOException {
+	public Server (String password) throws IOException, AWTException {
  
 		this.password = password;
 		this.name = InetAddress.getLocalHost().getHostName();
@@ -199,6 +200,7 @@ public class Server {
 					UDPDatagram received;
 					String clientName;
 					int command;
+					int key;
 
 					while (true) {
 
@@ -213,16 +215,16 @@ public class Server {
 								Server.this.terminal.execute(clientName + '@' + received.getSender().getHostAddress(), line);
 							break;
 							case Constants.commandKeyboardPress:
-								int key = received.retrieveInt();
+								key = received.retrieveInt();
 								Server.this.robot.keyPress(key);
 							break;
 							case Constants.commandKeyboardRelease:
-								int key = received.retrieveInt();
+								key = received.retrieveInt();
 								Server.this.robot.keyRelease(key);
 							break;
 							case Constants.commandSetSoundLevel:
 								float level = received.retrieveFloat();
-								this.masterVolume.setValue(level);
+								Server.this.masterVolume.setValue(level);
 							break;
 						}
 
