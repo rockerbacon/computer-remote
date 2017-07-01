@@ -27,7 +27,7 @@ public class NetInfo {
 		InetAddress broadcastIp = null;
 
 		interfaces = NetworkInterface.getNetworkInterfaces();
-		while (interfaces.hasMoreElements() && broadcastIp == null) {
+		while (interfaces.hasMoreElements()) {
 
 			addresses = interfaces.nextElement().getInterfaceAddresses();
 
