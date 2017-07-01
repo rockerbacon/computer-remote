@@ -9,7 +9,7 @@ import com.lab309.network.UDPDatagram;
 import com.lab309.general.SizeConstants;
 
 import java.io.IOException;
-import java.io.Serializable;
+import java.util.LinkedList;
 import java.net.InetAddress;
 import java.util.ArrayList;
 
@@ -22,7 +22,7 @@ public class Client {
 	/*ATTRIBUTES*/
 	private static String name;
 	private InetAddress ip;
-	private InetAddress broadcastIp;
+	private LinkedList<InetAddress> broadcasters;
 	private transient ArrayList<ServerModel> availableServers;
 	private ArrayList<ServerModel> connectedServers;
 	private transient final Object availableServersLock = new Object();
@@ -32,8 +32,8 @@ public class Client {
 	public Client (String name) throws IOException {
 		Client.name = name;
 		this.ip = NetInfo.thisMachineIpv4();
-		this.broadcastIp = NetInfo.broadcastIp();
-		if (broadcastIp == null || this.ip == null) {
+		this.broadcasters = NetInfo.broadcastIp();
+		if (this.broadcasters.size() == 0 || this.ip == null) {
 			throw new IOException("Could not connect to network");
 		}
 		this.availableServers = new ArrayList<ServerModel>();
@@ -84,9 +84,13 @@ public class Client {
 		request.pushByteArray(Constants.applicationId);
 		request.pushByte(Constants.identityRequest);
 
+		for (InetAddress broadcastIp : this.broadcasters) {
+			client = new UDPClient(Constants.broadcastPort, broadcastIp);
+			client.send(request);
+			client.close();
+		}
+
 		listener = new UDPServer(Constants.broadcastPort, Constants.applicationId.length + Constants.maxIdStringSize + SizeConstants.sizeOfBoolean);
-		client = new UDPClient(Constants.broadcastPort, this.broadcastIp);
-		client.send(request);
 
 		while ( ( received = listener.receiveExpectedOnTime(Constants.applicationId, Constants.requestResponseTimeLimit, Constants.wrongRequestAnswerLimit) ) != null ) {
 
@@ -108,7 +112,6 @@ public class Client {
 		}
 
 		listener.close();
-		client.close();
 
 	}
 

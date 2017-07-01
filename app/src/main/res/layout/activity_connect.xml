@@ -5,7 +5,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.lab309.computerRemote.ConnectActivity">
+    tools:context="com.lab309.computerRemote.ConnectActivity"
+    android:orientation="vertical">
 
     <TextView
         android:id="@+id/label_password"
@@ -18,7 +19,7 @@
 
     <EditText
         android:id="@+id/txtPassword"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPassword"
         tools:layout_editor_absoluteY="0dp"
