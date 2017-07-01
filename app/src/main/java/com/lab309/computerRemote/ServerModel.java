@@ -57,6 +57,13 @@ public class ServerModel implements Serializable {
 		return this.clientToServer != null;
 	}
 
+	public int getPort() {
+		if (this.clientToServer == null) {
+			return -1;
+		}
+		return this.clientToServer.getPort();
+	}
+
 	/*METHODS*/
 	public void confirmConnection (MacAddress mac, int serverPort, String password) throws IOException {
 		if (this.clientToServer == null) {

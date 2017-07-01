@@ -105,7 +105,14 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
 	@Override
 	public void onItemClick (AdapterView<?> l, View v, int position, long id) {
-		Intent intent = new Intent();
+		ServerModel server = this.client.getAvailableServer(position);
+		Intent intent = new Intent(this, ConnectActivity.class);
+
+		intent.putExtra("server_name", server.getName());
+		intent.putExtra("server_ip", server.getAddress());
+		intent.putExtra("server_passwordProtected", server.isPasswordProtected());
+
+		startActivity(intent);
 	}
 
 	@Override

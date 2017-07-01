@@ -17,10 +17,10 @@ import java.util.ArrayList;
  * Created by Vitor Andrade dos Santos on 4/13/17.
  */
 
-public class Client implements Serializable {
+public class Client {
 
 	/*ATTRIBUTES*/
-	private String name;
+	private static String name;
 	private InetAddress ip;
 	private InetAddress broadcastIp;
 	private transient ArrayList<ServerModel> availableServers;
@@ -30,7 +30,7 @@ public class Client implements Serializable {
 
 	/*CONSTRUCTORS*/
 	public Client (String name) throws IOException {
-		this.name = name;
+		Client.name = name;
 		this.ip = NetInfo.thisMachineIpv4();
 		this.broadcastIp = NetInfo.broadcastIp();
 		if (broadcastIp == null || this.ip == null) {
@@ -42,7 +42,7 @@ public class Client implements Serializable {
 
 	/*GETTERS*/
 	public String getName () {
-		return this.name;
+		return Client.name;
 	}
 
 	public int getAvailableServersCount () {
@@ -119,7 +119,7 @@ public class Client implements Serializable {
 	 *		UDPServer.STATUS_TIMEOUT se servidor nao respondeu
 	 *
 	 */
-	public int connectToServer (ServerModel server, String password) throws IOException {
+	public static int connectToServer (ServerModel server, String password) throws IOException {
 
 		UDPServer listener;
 		UDPClient client;
@@ -163,9 +163,11 @@ public class Client implements Serializable {
 			this.availableServers.remove(index);
 		}
 		*/
+		/*
 		synchronized (this.connectedServersLock) {
 			this.connectedServers.add(server);
 		}
+		*/
 
 		return UDPServer.STATUS_SUCCESSFUL;
 
@@ -206,27 +208,23 @@ public class Client implements Serializable {
 
 	}
 
-	private UDPDatagram prepareCommandDatagram (ServerModel server, int commandDataSize) {
-		UDPDatagram command = new UDPDatagram (MacAddress.SIZE + SizeConstants.sizeOfString(this.name) + SizeConstants.sizeOfInt + commandDataSize);
+	private static UDPDatagram prepareCommandDatagram (ServerModel server, int commandDataSize) {
+		UDPDatagram command = new UDPDatagram (MacAddress.SIZE + SizeConstants.sizeOfString(Client.name) + SizeConstants.sizeOfInt + commandDataSize);
 
 		command.pushByteArray(server.getMacAddress().getAddress(), 0, server.getMacAddress().getAddress().length);
-		command.pushString(this.name);
+		command.pushString(Client.name);
 
 		return command;
 	}
 
-	public void executeLine (final int index, final String line) {
+	public static void executeLine (final ServerModel server, final String line) {
 		new Thread (new Runnable () {
 			@Override
 			public void run () {
 				try {
 					UDPDatagram command;
-					ServerModel server;
-					synchronized (Client.this.connectedServersLock) {
-						server = Client.this.connectedServers.get(index);
-					}
 
-					command = Client.this.prepareCommandDatagram(server, SizeConstants.sizeOfString(line));
+					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfString(line));
 
 					command.pushInt(Constants.commandExecuteLine);
 					command.pushString(line);
@@ -239,18 +237,14 @@ public class Client implements Serializable {
 		}).start();
 	}
 
-	public void keyboardPress (final int index, final int keycode) {
+	public static void keyboardPress (final ServerModel server, final int keycode) {
 		new Thread ( new Runnable() {
 			@Override
 			public void run() {
 				try {
 					UDPDatagram command;
-					ServerModel server;
-					synchronized (Client.this.connectedServersLock) {
-						server = Client.this.connectedServers.get(index);
-					}
 
-					command = Client.this.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
+					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
 
 					command.pushInt(Constants.commandKeyboardPress);
 					command.pushInt(keycode);
@@ -263,18 +257,14 @@ public class Client implements Serializable {
 		}).start();
 	}
 
-	public void keyboardRelease (final int index, final int keycode) {
+	public static void keyboardRelease (final ServerModel server, final int keycode) {
 		new Thread ( new Runnable() {
 			@Override
 			public void run() {
 				try {
 					UDPDatagram command;
-					ServerModel server;
-					synchronized (Client.this.connectedServersLock) {
-						server = Client.this.connectedServers.get(index);
-					}
 
-					command = Client.this.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
+					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
 
 					command.pushInt(Constants.commandKeyboardRelease);
 					command.pushInt(keycode);
@@ -287,18 +277,15 @@ public class Client implements Serializable {
 		}).start();
 	}
 
-	public void setSound (final int index, final float soundLevel) {
+	//sound level deve ser um valor em porcentagem entre 0 e 1
+	public static void setSound (final ServerModel server, final float soundLevel) {
 		new Thread ( new Runnable() {
 			@Override
 			public void run() {
 				try {
 					UDPDatagram command;
-					ServerModel server;
-					synchronized (Client.this.connectedServersLock) {
-						server = Client.this.connectedServers.get(index);
-					}
 
-					command = Client.this.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
+					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
 
 					command.pushInt(Constants.commandSetSoundLevel);
 					command.pushFloat(soundLevel);
