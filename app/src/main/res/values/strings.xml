@@ -2,4 +2,6 @@
     <string name="app_name">Computer Remote</string>
     <string name="file_client">file_client</string>
     <string name="text_noNetwork">Could not connect to network</string>
+    <string name="label_password">Digite a senha:</string>
+    <string name="button_send_pw">Enviar</string>
 </resources>

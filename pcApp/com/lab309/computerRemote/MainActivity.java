@@ -4,11 +4,11 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.widget.SimpleCursorAdapter;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
-
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
@@ -23,37 +23,13 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
 
 	private Client client;
 	private Handler mainHandler;
 	private ProgressBarManager progressBar;
 	private ArrayList<String> listDisplay;
 	private ArrayAdapter<String> listAdapter;
-
-	private Runnable updateServerList = new Runnable () {
-		@Override
-		public void run () {
-
-			MainActivity.this.listAdapter.notifyDataSetChanged();
-			MainActivity.this.progressBar.setVisibility(View.INVISIBLE);
-
-		}
-	};
-
-	private AdapterView.OnItemClickListener connectionClick = new AdapterView.OnItemClickListener() {
-		@Override
-		public void onItemClick (AdapterView<?> l, View v, int position, long id) {
-			ServerModel server = MainActivity.this.client.getAvailableServer(position);
-			Intent intent = new Intent(MainActivity.this, ConnectActivity.class);
-
-			intent.putExtra("server_name", server.getName());
-			intent.putExtra("server_address", server.getAddress());
-			intent.putExtra("server_passwordProtected", server.isPasswordProtected());
-
-			startActivity(intent);
-		}
-	};
 
 	private void recreateClient () {
 		new Thread (new Runnable() {
@@ -117,6 +93,28 @@ public class MainActivity extends AppCompatActivity {
 		}).start();
 	}
 
+	private Runnable updateServerList = new Runnable () {
+		@Override
+		public void run () {
+
+			MainActivity.this.listAdapter.notifyDataSetChanged();
+			MainActivity.this.progressBar.setVisibility(View.INVISIBLE);
+
+		}
+	};
+
+	@Override
+	public void onItemClick (AdapterView<?> l, View v, int position, long id) {
+		ServerModel server = this.client.getAvailableServer(position);
+		Intent intent = new Intent(this, ConnectActivity.class);
+
+		intent.putExtra("server_name", server.getName());
+		intent.putExtra("server_ip", server.getAddress());
+		intent.putExtra("server_passwordProtected", server.isPasswordProtected());
+
+		startActivity(intent);
+	}
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -132,7 +130,6 @@ public class MainActivity extends AppCompatActivity {
 		ImageButton buttonRefresh = (ImageButton)findViewById(R.id.buttonRefresh);
 
 		listAvailableServers.setAdapter(this.listAdapter);
-		listAvailableServers.setOnItemClickListener(this.connectionClick);
 		buttonRefresh.setOnClickListener (new View.OnClickListener() {
 			@Override
 			public void onClick (View v) {
@@ -146,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
 	protected void onStart() {
 		super.onStart();
 		try {
+
 			ObjectInputStream clientFile;
 
 			clientFile = new ObjectInputStream( openFileInput(getResources().getString(R.string.file_client)) );
