@@ -89,6 +89,7 @@ public class Audio {
 	public static Line getMasterOutputLine() {
 		for (Mixer mixer : getMixers()) {
 			for (Line line : getAvailableOutputLines(mixer)) {
+				System.out.println(line.getLineInfo());	//debug
 				if (line.getLineInfo().toString().contains("Master")) return line;
 			}
 		}

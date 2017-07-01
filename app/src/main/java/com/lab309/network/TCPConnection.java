@@ -3,8 +3,6 @@ package com.lab309.network;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.Socket;
 
 /**
  * Classe para envio e recebimento de dados em uma conexao TCP
@@ -15,15 +13,17 @@ import java.net.Socket;
 public class TCPConnection {
 
 	/*ATTRIBUTES*/
-	private Socket connection;
-	private DataOutputStream outputStream;
-	private DataInputStream inputStream;
+	protected DataOutputStream outputStream;
+	protected DataInputStream inputStream;
 
 	/*METHODS*/
-	public TCPConnection(int port, InetAddress address, String mode) throws IOException {
-		this.connection = new Socket(address, port);
-		this.outputStream = new DataOutputStream(this.connection.getOutputStream());
-		this.inputStream = new DataInputStream(this.connection.getInputStream());
+	public TCPConnection () {}
+	public TCPConnection (DataOutputStream outputStream, DataInputStream inputStream) {
+		this.setStreams(outputStream, inputStream);
+	}
+	protected void setStreams (DataOutputStream outputStream, DataInputStream inputStream) {
+		this.outputStream = outputStream;
+		this.inputStream = inputStream;
 	}
 
 	/*SEND*/
@@ -150,5 +150,4 @@ public class TCPConnection {
 		this.inputStream.readShort();
 	}
 
-	public void
 }

@@ -13,9 +13,6 @@ import com.lab309.network.NetInfo;
 import com.lab309.general.SizeConstants;
 
 import com.lab309.os.Terminal;
-import ilarkesto.media.Audio;
-
-import javax.sound.sampled.FloatControl;
 
 import java.io.IOException;
 import java.awt.AWTException;
@@ -70,7 +67,6 @@ public class Server {
 
 	private Terminal terminal;
 	private Robot robot;
-	private FloatControl masterVolume;
 
 	/*CONSTRUCTORS*/
 	public Server (String password) throws IOException, AWTException {
@@ -88,7 +84,6 @@ public class Server {
 
 		this.terminal = new Terminal(System.out);
 		this.robot = new Robot();
-		this.masterVolume = Audio.getVolumeControl(Audio.getMasterOutputLine());
 
 		this.waitForCommand();
 	}
@@ -221,10 +216,6 @@ public class Server {
 							case Constants.commandKeyboardRelease:
 								key = received.retrieveInt();
 								Server.this.robot.keyRelease(key);
-							break;
-							case Constants.commandSetSoundLevel:
-								float level = received.retrieveFloat();
-								Server.this.masterVolume.setValue(level);
 							break;
 						}
 
