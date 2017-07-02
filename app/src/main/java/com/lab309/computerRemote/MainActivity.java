@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
 			Intent intent = new Intent(MainActivity.this, ConnectActivity.class);
 
 			intent.putExtra("server_name", server.getName());
-			intent.putExtra("server_address", server.getAddress());
+			intent.putExtra("server_address", server.getAddress().getAddress());
 			intent.putExtra("server_passwordProtected", server.isPasswordProtected());
 
 			startActivity(intent);

@@ -3,5 +3,6 @@
     <string name="file_client">file_client</string>
     <string name="text_noNetwork">Could not connect to network</string>
     <string name="label_password">Digite a senha:</string>
-    <string name="button_send_pw">Enviar</string>
+    <string name="label_sendCommands">Comandos:</string>
+    <string name="button_send">Enviar</string>
 </resources>
