@@ -27,8 +27,14 @@ public class TCPConnection {
 	}
 
 	/*METHODS*/
-	public void close () throws IOException {
-		this.connection.close();
+	public void close () {
+		try {
+			if (this.connection != null) {
+				this.connection.close();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/*GETTERS*/
@@ -42,14 +48,6 @@ public class TCPConnection {
 
 	public int getPort () {
 		return this.connection.getPort();
-	}
-
-	public boolean isClosed() {
-		return this.connection.isClosed();
-	}
-
-	public boolean isConnected () {
-		return this.connection.isConnected();
 	}
 
 	/*SEND*/

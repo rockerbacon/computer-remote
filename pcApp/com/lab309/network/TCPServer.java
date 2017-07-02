@@ -1,10 +1,6 @@
 package com.lab309.network;
 
-import java.io.DataOutputStream;
-import java.io.DataInputStream;
-
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -14,17 +10,27 @@ import java.net.Socket;
 
 public class TCPServer extends TCPConnection {
 	/*ATTRIBUTES*/
+	private ServerSocket connectionListener;
 	private Socket connection;
 
 	/*CONSTRUCTORS*/
-	public TCPServer () {}
 	public TCPServer (int port) throws IOException {
-		this.connect(port);
+		this.connectionListener = new ServerSocket(port);
 	}
 
 	/*METHODS*/
-	public void connect( int port) throws IOException {
-		this.connection = (new ServerSocket(port)).accept();
+	public void connect() throws IOException {
+		this.connection = this.connectionListener.accept();
 		this.setConnection(this.connection);
 	}
+	
+	public void close() {
+		try {
+			this.connectionListener.close();
+			super.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
 }

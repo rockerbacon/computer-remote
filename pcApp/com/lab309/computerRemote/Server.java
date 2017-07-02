@@ -1,12 +1,14 @@
 package com.lab309.computerRemote;
 
 import java.net.InetAddress;
+import java.util.LinkedList;
 
 import java.awt.Robot;
 
 import com.lab309.network.UDPClient;
 import com.lab309.network.UDPServer;
 import com.lab309.network.UDPDatagram;
+import com.lab309.network.TCPServer;
 import com.lab309.network.MacAddress;
 import com.lab309.network.NetInfo;
 
@@ -60,12 +62,14 @@ public class Server {
 	private String name;
 	private InetAddress ip;
 	private MacAddress mac;
-
+	
 	private UDPServer broadcastServer;
 	private UDPServer commandsServer;
+	
+	private TCPServer logServer;
+	
 	private boolean waitingForConnection;
-
-	private Terminal terminal;
+	private Runtime runtime;
 	private Robot robot;
 
 	/*CONSTRUCTORS*/
@@ -79,10 +83,24 @@ public class Server {
 
 		//this.broadcastServer = new UDPServer (Constants.broadcastPort, Constants.broadcastBufferSize);
 		this.commandsServer = new UDPServer (Constants.commandBufferSize);
+		
+		this.logServer = new TCPServer(Constants.broadcastPort);
+		new Thread( new Runnable () {
+			@Override
+			public void run () {
+				try {
+					Server.this.logServer.connect();
+				} catch (SocketException e) {
+					System.out.println (e.getMessage());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
 
 		this.waitingForConnection = false;
 
-		this.terminal = new Terminal(System.out);
+		this.runtime = Runtime.getRuntime();
 		this.robot = new Robot();
 
 		this.waitForCommand();
@@ -102,6 +120,22 @@ public class Server {
 	}
 
 	/*METHODS*/
+	private void log (final String message) {
+		new Thread (new Runnable() {
+			@Override
+			public void run() {
+				if (Server.this.logServer != null) {
+					try {
+						Server.this.logServer.sendString(message+'\n');
+					} catch (IOException e) {
+						Server.this.logServer.close();
+						Server.this.logServer = null;
+					}
+				}
+			}	
+		}).start();
+	}
+	
 	public void waitForConnection () throws IOException {
 		if (!this.waitingForConnection) {
 			this.broadcastServer = new UDPServer(Constants.broadcastPort, Constants.broadcastBufferSize);
@@ -200,22 +234,32 @@ public class Server {
 					while (true) {
 
 						received = Server.this.commandsServer.receiveExpected(Server.this.mac.getAddress());
-
+						
 						clientName = received.retrieveString();
 						command = received.retrieveInt();
-
+						
 						switch (command) {
 							case Constants.commandExecuteLine:
 								String line = received.retrieveString();
-								Server.this.terminal.execute(clientName + '@' + received.getSender().getHostAddress(), line);
+								Server.this.runtime.exec(line);
+								Server.this.log(clientName + '@' + received.getSender().getHostAddress() + " executed line: " + line);
 							break;
 							case Constants.commandKeyboardPress:
 								key = received.retrieveInt();
 								Server.this.robot.keyPress(key);
+								Server.this.log(clientName + '@' + received.getSender().getHostAddress() + " pressed key: " + key);
 							break;
 							case Constants.commandKeyboardRelease:
 								key = received.retrieveInt();
 								Server.this.robot.keyRelease(key);
+								Server.this.log(clientName + '@' + received.getSender().getHostAddress() + " released key: " + key);
+							break;
+							case Constants.commandKeyboardClick:
+								int pressLength;
+								key = received.retrieveInt();
+								Server.this.robot.keyPress(key);
+								Server.this.robot.keyRelease(key);
+								Server.this.log(clientName + '@' + received.getSender().getHostAddress() + " clicked key: " + key);
 							break;
 						}
 
@@ -236,6 +280,7 @@ public class Server {
 	public void close () {
 		this.stopWaitingForConnection();
 		this.commandsServer.close();
+		this.logServer.close();
 	}
 
 }

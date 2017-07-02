@@ -47,6 +47,14 @@ public class Constants {
 	 *
 	 */
 	public static final int commandKeyboardRelease = 3;
+	
+	/* Variavel: commandKeyboardClick
+	 * Campo de dados: | int code |
+	 *
+	 * Pressiona e imediatamente solta tecla definida por code
+	 *
+	 */
+	public static final int commandKeyboardClick = 4;
 
 	/* Vriavel: commandSetSoundLevel
 	 * Campo de dados: | float level |

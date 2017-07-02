@@ -47,11 +47,13 @@ public class Constants {
 	 *
 	 */
 	public static final int commandKeyboardRelease = 3;
-
-	/* Vriavel: commandSetSoundLevel
-	 * Campo de dados: | float level |
+	
+	/* Variavel: commandKeyboardClick
+	 * Campo de dados: | int code |
 	 *
-	 * Define nivel de volume como o dado pelo parametro level
+	 * Pressiona e imediatamente solta tecla definida por code
+	 *
 	 */
-	public static final int commandSetSoundLevel = 4;
+	public static final int commandKeyboardClick = 4;
+
 }

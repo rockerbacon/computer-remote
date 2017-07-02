@@ -280,8 +280,7 @@ public class Client {
 		}).start();
 	}
 
-	//sound level deve ser um valor em porcentagem entre 0 e 1
-	public static void setSound (final ServerModel server, final float soundLevel) {
+	public static void keyboardClick (final ServerModel server, final int keycode) {
 		new Thread ( new Runnable() {
 			@Override
 			public void run() {
@@ -290,8 +289,8 @@ public class Client {
 
 					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
 
-					command.pushInt(Constants.commandSetSoundLevel);
-					command.pushFloat(soundLevel);
+					command.pushInt(Constants.commandKeyboardClick);
+					command.pushInt(keycode);
 
 					server.send(command);
 				} catch (IOException e) {

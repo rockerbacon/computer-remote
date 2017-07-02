@@ -1,14 +1,12 @@
 package com.lab309.network;
 
-import com.lab309.general.ByteArrayConverter;
-import com.lab309.general.SizeConstants;
-
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.InterfaceAddress;
 
 import java.util.Enumeration;
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Iterator;
 
 import java.io.IOException;
@@ -20,26 +18,31 @@ public class NetInfo {
 		return NetworkInterface.getByInetAddress(ip).getHardwareAddress();
 	}
 
-	public static InetAddress broadcastIp () throws IOException {
+	public static LinkedList<InetAddress> broadcastIp () throws IOException {
 
 		Enumeration<NetworkInterface> interfaces;
 		List<InterfaceAddress> addresses;
 		Iterator<InterfaceAddress> i;
+		LinkedList<InetAddress> broadcasters = new LinkedList<InetAddress>();
 		InetAddress broadcastIp = null;
 
 		interfaces = NetworkInterface.getNetworkInterfaces();
-		while (interfaces.hasMoreElements() && broadcastIp == null) {
+		while (interfaces.hasMoreElements()) {
 
 			addresses = interfaces.nextElement().getInterfaceAddresses();
 
 			i = addresses.iterator();
-			while (broadcastIp == null && i.hasNext()) {
+
+			while (i.hasNext()) {
 				broadcastIp = i.next().getBroadcast();
+				if (broadcastIp != null) {
+					broadcasters.add(broadcastIp);
+				}
 			}
 
 		}
 
-		return broadcastIp;
+		return broadcasters;
 
 		/*
 		int broadcastIp;
