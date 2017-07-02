@@ -21,6 +21,9 @@ public class Constants {
 	public static final int maxPasswordString = 37*SizeConstants.sizeOfChar;
 	public static final int broadcastBufferSize = applicationId.length + SizeConstants.sizeOfByte + maxPasswordString;
 	public static final int commandBufferSize = SizeConstants.sizeOfInt+257*SizeConstants.sizeOfChar;
+	
+	public static final int keyboardQueueSize = 20;
+	public static final int receivedQueueSize = 5;
 
 	/*COMANDOS*/
 

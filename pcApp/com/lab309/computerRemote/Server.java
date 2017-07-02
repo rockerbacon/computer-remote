@@ -12,9 +12,11 @@ import com.lab309.network.TCPServer;
 import com.lab309.network.MacAddress;
 import com.lab309.network.NetInfo;
 
+import com.lab309.adt.StaticQueue;
+
 import com.lab309.general.SizeConstants;
 
-import com.lab309.os.Terminal;
+import com.lab309.os.BoundedSemaphore;
 
 import java.io.IOException;
 import java.awt.AWTException;
@@ -68,9 +70,26 @@ public class Server {
 	
 	private TCPServer logServer;
 	
+	private StaticQueue<int> keyboardQueue;
+	private Semaphore keyboardQueueSemaphore;
+	
+	private StaticQueue<UDPDatagram> receivedQueue;
+	private Semaphore receivedQueueSemaphore;
+	
 	private boolean waitingForConnection;
 	private Runtime runtime;
 	private Robot robot;
+	
+	/*THREADS*/
+	private Thread proccessCommands = new Thread() {
+		@Override
+		public void run() {
+			while (true) {
+				Server.this.receivedQueueSemaphore.release();
+				
+			}
+		}
+	};
 
 	/*CONSTRUCTORS*/
 	public Server (String password) throws IOException, AWTException {
@@ -98,6 +117,12 @@ public class Server {
 			}
 		}).start();
 
+		this.keyboardQueue = new StaticQueue<int>(Constants.keyboardQueueSize);
+		this.keyboardQueueSemaphore = new Semaphore();
+		
+		this.receivedQueue = new StaticQueue<UDPDatagram>(Constants.receivedQueueSize);
+		this.receivedQueueSemaphore = new Semaphore();
+		
 		this.waitingForConnection = false;
 
 		this.runtime = Runtime.getRuntime();
