@@ -20,7 +20,7 @@ import java.util.ArrayList;
 public class Client {
 
 	/*ATTRIBUTES*/
-	private static String name;
+	private String name;
 	private InetAddress ip;
 	private LinkedList<InetAddress> broadcasters;
 	private transient ArrayList<ServerModel> availableServers;
@@ -30,7 +30,7 @@ public class Client {
 
 	/*CONSTRUCTORS*/
 	public Client (String name) throws IOException {
-		Client.name = name;
+		this.name = name;
 		this.ip = NetInfo.thisMachineIpv4();
 		this.broadcasters = NetInfo.broadcastIp();
 		if (this.broadcasters.size() == 0 || this.ip == null) {
@@ -42,7 +42,7 @@ public class Client {
 
 	/*GETTERS*/
 	public String getName () {
-		return Client.name;
+		return this.name;
 	}
 
 	public int getAvailableServersCount () {
@@ -211,23 +211,23 @@ public class Client {
 
 	}
 
-	private static UDPDatagram prepareCommandDatagram (ServerModel server, int commandDataSize) {
-		UDPDatagram command = new UDPDatagram (MacAddress.SIZE + SizeConstants.sizeOfString(Client.name) + SizeConstants.sizeOfInt + commandDataSize);
+	private static UDPDatagram prepareCommandDatagram (ServerModel server, String senderName, int commandDataSize) {
+		UDPDatagram command = new UDPDatagram (MacAddress.SIZE + SizeConstants.sizeOfString(senderName) + SizeConstants.sizeOfInt + commandDataSize);
 
 		command.pushByteArray(server.getMacAddress().getAddress(), 0, server.getMacAddress().getAddress().length);
-		command.pushString(Client.name);
+		command.pushString(senderName);
 
 		return command;
 	}
 
-	public static void executeLine (final ServerModel server, final String line) {
+	public static void executeLine (final ServerModel server, final String senderName, final String line) {
 		new Thread (new Runnable () {
 			@Override
 			public void run () {
 				try {
 					UDPDatagram command;
 
-					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfString(line));
+					command = Client.prepareCommandDatagram(server, senderName, SizeConstants.sizeOfString(line));
 
 					command.pushInt(Constants.commandExecuteLine);
 					command.pushString(line);
@@ -240,14 +240,14 @@ public class Client {
 		}).start();
 	}
 
-	public static void keyboardPress (final ServerModel server, final int keycode) {
+	public static void keyboardPress (final ServerModel server, final String senderName, final int keycode) {
 		new Thread ( new Runnable() {
 			@Override
 			public void run() {
 				try {
 					UDPDatagram command;
 
-					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
+					command = Client.prepareCommandDatagram(server, senderName, SizeConstants.sizeOfInt);
 
 					command.pushInt(Constants.commandKeyboardPress);
 					command.pushInt(keycode);
@@ -260,14 +260,14 @@ public class Client {
 		}).start();
 	}
 
-	public static void keyboardRelease (final ServerModel server, final int keycode) {
+	public static void keyboardRelease (final ServerModel server, final String senderName, final int keycode) {
 		new Thread ( new Runnable() {
 			@Override
 			public void run() {
 				try {
 					UDPDatagram command;
 
-					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
+					command = Client.prepareCommandDatagram(server, senderName, SizeConstants.sizeOfInt);
 
 					command.pushInt(Constants.commandKeyboardRelease);
 					command.pushInt(keycode);
@@ -280,14 +280,14 @@ public class Client {
 		}).start();
 	}
 
-	public static void keyboardClick (final ServerModel server, final int keycode) {
+	public static void keyboardClick (final ServerModel server, final String senderName, final int keycode) {
 		new Thread ( new Runnable() {
 			@Override
 			public void run() {
 				try {
 					UDPDatagram command;
 
-					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
+					command = Client.prepareCommandDatagram(server, senderName, SizeConstants.sizeOfInt);
 
 					command.pushInt(Constants.commandKeyboardClick);
 					command.pushInt(keycode);

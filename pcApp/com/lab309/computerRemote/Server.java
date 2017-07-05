@@ -2,7 +2,6 @@ package com.lab309.computerRemote;
 
 import java.net.InetAddress;
 import java.util.LinkedList;
-
 import java.awt.Robot;
 
 import com.lab309.network.UDPClient;
@@ -11,13 +10,10 @@ import com.lab309.network.UDPDatagram;
 import com.lab309.network.TCPServer;
 import com.lab309.network.MacAddress;
 import com.lab309.network.NetInfo;
-
+import com.lab309.adt.ConcurrentStaticQueue;
 import com.lab309.general.SizeConstants;
 
-import com.lab309.os.Terminal;
-
 import java.io.IOException;
-import java.awt.AWTException;
 import java.net.SocketException;
 
 /*
@@ -65,15 +61,76 @@ public class Server {
 	
 	private UDPServer broadcastServer;
 	private UDPServer commandsServer;
-	
 	private TCPServer logServer;
 	
+	private ConcurrentStaticQueue<UDPDatagram> commandQueue;
+	private boolean processingCommands;
+	private Object signal;
+	
 	private boolean waitingForConnection;
-	private Runtime runtime;
-	private Robot robot;
-
+	
+	/*THREADS*/
+	private Runnable processCommands = new Runnable() {
+		@Override
+		public void run () {
+		
+			try {
+				Robot robot = new Robot();
+				Runtime runtime = Runtime.getRuntime();
+		
+				UDPDatagram currentCommand;
+				String clientName;
+				String line;
+				int command;
+				int key;
+			
+				Server.this.processingCommands = true;
+			
+				while (true) {
+				
+					currentCommand = Server.this.commandQueue.pop();
+					while (currentCommand == null && Server.this.processingCommands) {
+						synchronized (Server.this.signal) { Server.this.signal.wait(); }
+						currentCommand = Server.this.commandQueue.pop();
+					}
+					
+					if (!Server.this.processingCommands) { return; }
+				
+					clientName = currentCommand.retrieveString();
+					command = currentCommand.retrieveInt();
+						
+					switch (command) {
+						case Constants.commandExecuteLine:
+							line = currentCommand.retrieveString();
+							runtime.exec(line);
+							Server.this.log(clientName + '@' + currentCommand.getSender().getHostAddress() + " executed line: " + line);
+						break;
+						case Constants.commandKeyboardPress:
+							key = currentCommand.retrieveInt();
+							robot.keyPress(key);
+							Server.this.log(clientName + '@' + currentCommand.getSender().getHostAddress() + " pressed key: " + key);
+						break;
+						case Constants.commandKeyboardRelease:
+							key = currentCommand.retrieveInt();
+							robot.keyRelease(key);
+							Server.this.log(clientName + '@' + currentCommand.getSender().getHostAddress() + " released key: " + key);
+						break;
+						case Constants.commandKeyboardClick:
+							key = currentCommand.retrieveInt();
+							robot.keyPress(key);
+							robot.keyRelease(key);
+							Server.this.log(clientName + '@' + currentCommand.getSender().getHostAddress() + " clicked key: " + key);
+						break;
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}	
+	};
+	
 	/*CONSTRUCTORS*/
-	public Server (String password) throws IOException, AWTException {
+	public Server (String password) throws IOException {
  
 		this.password = password;
 		this.name = InetAddress.getLocalHost().getHostName();
@@ -81,8 +138,9 @@ public class Server {
 		this.ip = NetInfo.thisMachineIpv4();
 		this.mac = new MacAddress(NetInfo.machineMacByIp(this.ip), 0);
 
-		//this.broadcastServer = new UDPServer (Constants.broadcastPort, Constants.broadcastBufferSize);
 		this.commandsServer = new UDPServer (Constants.commandBufferSize);
+		this.commandQueue = new ConcurrentStaticQueue<UDPDatagram> (Constants.commandQueueSize);
+		this.signal = new Object();
 		
 		this.logServer = new TCPServer(Constants.broadcastPort);
 		new Thread( new Runnable () {
@@ -97,13 +155,11 @@ public class Server {
 				}
 			}
 		}).start();
-
+		
 		this.waitingForConnection = false;
 
-		this.runtime = Runtime.getRuntime();
-		this.robot = new Robot();
-
-		this.waitForCommand();
+		this.waitForCommands();
+		new Thread(this.processCommands).start();
 	}
 
 	/*GETTERS*/
@@ -210,6 +266,29 @@ public class Server {
 
 		}
 	}
+	
+	private void waitForCommands () {
+		new Thread ( new Runnable () {
+				@Override
+				public void run () {
+					try {
+						UDPDatagram received;
+
+						while (true) {
+							received = Server.this.commandsServer.receiveExpected(Server.this.mac.getAddress());
+							if (!Server.this.commandQueue.full()) {
+								Server.this.commandQueue.push(received);
+								synchronized (Server.this.signal) { Server.this.signal.notify(); }
+							}	
+						}
+					} catch (SocketException e) {
+						System.out.println(e.getMessage());
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}).start();
+	}
 
 	public void stopWaitingForConnection () {
 		if (this.waitingForConnection) {
@@ -219,68 +298,12 @@ public class Server {
 		}
 	}
 
-	private void waitForCommand () throws IOException {
-		new Thread ( new Runnable () {
-			@Override
-			public void run () {
-
-				try {
-
-					UDPDatagram received;
-					String clientName;
-					int command;
-					int key;
-
-					while (true) {
-
-						received = Server.this.commandsServer.receiveExpected(Server.this.mac.getAddress());
-						
-						clientName = received.retrieveString();
-						command = received.retrieveInt();
-						
-						switch (command) {
-							case Constants.commandExecuteLine:
-								String line = received.retrieveString();
-								Server.this.runtime.exec(line);
-								Server.this.log(clientName + '@' + received.getSender().getHostAddress() + " executed line: " + line);
-							break;
-							case Constants.commandKeyboardPress:
-								key = received.retrieveInt();
-								Server.this.robot.keyPress(key);
-								Server.this.log(clientName + '@' + received.getSender().getHostAddress() + " pressed key: " + key);
-							break;
-							case Constants.commandKeyboardRelease:
-								key = received.retrieveInt();
-								Server.this.robot.keyRelease(key);
-								Server.this.log(clientName + '@' + received.getSender().getHostAddress() + " released key: " + key);
-							break;
-							case Constants.commandKeyboardClick:
-								int pressLength;
-								key = received.retrieveInt();
-								Server.this.robot.keyPress(key);
-								Server.this.robot.keyRelease(key);
-								Server.this.log(clientName + '@' + received.getSender().getHostAddress() + " clicked key: " + key);
-							break;
-						}
-
-					}
-
-				} catch (SocketException e) {
-					System.out.println(e.getMessage());
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-
-			}
-
-
-		}).start();
-	}
-
 	public void close () {
 		this.stopWaitingForConnection();
 		this.commandsServer.close();
 		this.logServer.close();
+		this.processingCommands = false;
+		synchronized (Server.this.signal) { Server.this.signal.notifyAll(); }
 	}
 
 }
