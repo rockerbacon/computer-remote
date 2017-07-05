@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 ;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -36,6 +37,10 @@ public class CommandsActivity extends AppCompatActivity {
 
         final ServerModel server = serv;
 
+        if(server == null)
+        {
+            Log.d("SERVIDOR NULOOOOOO!!", "SREREREVERRR NULOOOOOOOOO");
+        }
         commandText = (EditText) findViewById(R.id.txtCommands);
         sendButton = (Button) findViewById(R.id.button_send_cmd);
         leftButton = (Button) findViewById(R.id.button_cmd_left);
@@ -50,7 +55,15 @@ public class CommandsActivity extends AppCompatActivity {
                     @Override
                     public void run()
                     {
-                        Client.executeLine(server, commandText.getText().toString());
+                        String s = commandText.getText().toString();
+                        if(s != null)
+                        {
+                            Client.executeLine(server, s);
+                        }
+                        else
+                        {
+                            Log.d("AAAAAAAAAAHAHA", "STRING NULAAAAAAAAA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        }
                     }
                 }).start();
             }
