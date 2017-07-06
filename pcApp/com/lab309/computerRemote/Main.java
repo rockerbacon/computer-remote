@@ -7,7 +7,7 @@ public class Main {
 		try {
 
 			Scanner wait = new Scanner(System.in);
-			Server server = new Server ("this is a password");
+			Server server = new Server ("password");
 
 			System.out.println("Server: " + server.getName() + " @ " + server.getAddress().getHostAddress());
 			System.out.println("MacAddress: " + server.getMacAddress().getFormatedAddress("-"));

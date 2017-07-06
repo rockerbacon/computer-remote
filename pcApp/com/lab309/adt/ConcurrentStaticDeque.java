@@ -21,7 +21,7 @@ public class ConcurrentStaticDeque<T> {
 	public ConcurrentStaticDeque (int size) {
 		this.data = new Object[size];
 		this.beginning = size/2;
-		this.end = this.beginning;
+		this.end = this.beginning+1;
 		this.length = 0;
 	}
 
@@ -51,7 +51,7 @@ public class ConcurrentStaticDeque<T> {
 		synchronized (this.lengthLock) {
 			if (this.length == this.data.length) {
 				throw new IndexOutOfBoundsException("Deque is full");
-			}
+			}	
 			this.length++;
 		}
 		

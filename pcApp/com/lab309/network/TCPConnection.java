@@ -25,18 +25,7 @@ public class TCPConnection {
 		this.outputStream = new DataOutputStream(this.connection.getOutputStream());
 		this.inputStream = new DataInputStream (this.connection.getInputStream());
 	}
-
-	/*METHODS*/
-	public void close () {
-		try {
-			if (this.connection != null) {
-				this.connection.close();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
+	
 	/*GETTERS*/
 	public InetAddress getAddress () {
 		return this.connection.getInetAddress();
@@ -48,6 +37,21 @@ public class TCPConnection {
 
 	public int getPort () {
 		return this.connection.getPort();
+	}
+	
+	public boolean isConnected () {
+		return this.connection != null;
+	}
+
+	/*METHODS*/
+	public void close () {
+		try {
+			if (this.connection != null) {
+				this.connection.close();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/*SEND*/

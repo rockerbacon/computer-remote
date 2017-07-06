@@ -87,7 +87,6 @@ public class Server {
 				Server.this.processingCommands = true;
 			
 				while (true) {
-				
 					currentCommand = Server.this.commandQueue.pop();
 					while (currentCommand == null && Server.this.processingCommands) {
 						synchronized (Server.this.signal) { Server.this.signal.wait(); }
@@ -181,11 +180,13 @@ public class Server {
 			@Override
 			public void run() {
 				if (Server.this.logServer != null) {
-					try {
-						Server.this.logServer.sendString(message+'\n');
-					} catch (IOException e) {
-						Server.this.logServer.close();
-						Server.this.logServer = null;
+					if (Server.this.logServer.isConnected()) {
+						try {
+							Server.this.logServer.sendString(message+'\n');
+						} catch (IOException e) {
+							Server.this.logServer.close();
+							Server.this.logServer = null;
+						}
 					}
 				}
 			}	
@@ -276,10 +277,10 @@ public class Server {
 
 						while (true) {
 							received = Server.this.commandsServer.receiveExpected(Server.this.mac.getAddress());
-							if (!Server.this.commandQueue.full()) {
+							if (Server.this.commandQueue.length() < Constants.commandQueueSize) {
 								Server.this.commandQueue.push(received);
 								synchronized (Server.this.signal) { Server.this.signal.notify(); }
-							}	
+							}
 						}
 					} catch (SocketException e) {
 						System.out.println(e.getMessage());
