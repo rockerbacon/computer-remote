@@ -9,6 +9,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
+import com.lab309.network.MacAddress;
+
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
@@ -17,13 +20,15 @@ public class CommandsActivity extends AppCompatActivity {
     private EditText commandText;
     private Button sendButton, leftButton, rightButton;
 
+    Intent intent = getIntent();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_commands);
 
         Intent intent = getIntent();
-
+        final String sender_name = intent.getStringExtra("sender_name");
         ServerModel serv = null;
 
         try
@@ -37,10 +42,15 @@ public class CommandsActivity extends AppCompatActivity {
 
         final ServerModel server = serv;
 
-        if(server == null)
+        try
         {
-            Log.d("SERVIDOR NULOOOOOO!!", "SREREREVERRR NULOOOOOOOOO");
+            server.confirmConnection(new MacAddress(intent.getByteArrayExtra("server_mac"), 0), intent.getIntExtra("server_port", -1), intent.getStringExtra("server_pw"));
         }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+
         commandText = (EditText) findViewById(R.id.txtCommands);
         sendButton = (Button) findViewById(R.id.button_send_cmd);
         leftButton = (Button) findViewById(R.id.button_cmd_left);
@@ -55,15 +65,8 @@ public class CommandsActivity extends AppCompatActivity {
                     @Override
                     public void run()
                     {
-                        String s = commandText.getText().toString();
-                        if(s != null)
-                        {
-                            Client.executeLine(server, s);
-                        }
-                        else
-                        {
-                            Log.d("AAAAAAAAAAHAHA", "STRING NULAAAAAAAAA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                        }
+                        Client.executeLine(server, sender_name, commandText.getText().toString());
+
                     }
                 }).start();
             }
@@ -78,7 +81,7 @@ public class CommandsActivity extends AppCompatActivity {
                     @Override
                     public void run()
                     {
-                        Client.keyboardClick(server, 37);
+                        Client.keyboardClick(server, sender_name, 37);
                     }
                 }).start();
             }
@@ -93,7 +96,7 @@ public class CommandsActivity extends AppCompatActivity {
                     @Override
                     public void run()
                     {
-                        Client.keyboardClick(server, 39);
+                        Client.keyboardClick(server, sender_name, 39);
                     }
                 }).start();
             }
