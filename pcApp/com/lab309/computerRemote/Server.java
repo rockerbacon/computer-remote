@@ -184,8 +184,16 @@ public class Server {
 						try {
 							Server.this.logServer.sendString(message+'\n');
 						} catch (IOException e) {
+							//caso nao consiga enviar mensagem fecha conexao atual e espera nova conexao
 							Server.this.logServer.close();
-							Server.this.logServer = null;
+							try {
+								Server.this.logServer = new TCPServer(Constants.broadcastPort);
+								Server.this.logServer.connect();
+							} catch (SocketException e1) {
+								System.out.println (e1.getMessage());
+							} catch (IOException e1) {
+								e1.printStackTrace();
+							}
 						}
 					}
 				}

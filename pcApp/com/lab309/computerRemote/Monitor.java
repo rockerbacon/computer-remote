@@ -1,6 +1,10 @@
 package com.lab309.computerRemote;
 
-import com.lab309.TCPClient;
+import com.lab309.network.TCPClient;
+
+import java.net.InetAddress;
+
+import java.io.IOException;
 
 public class Monitor {
 	/*ATTRIBUTES*/
@@ -8,7 +12,11 @@ public class Monitor {
 	
 	/*CONSTRUCTORS*/
 	public Monitor (InetAddress address) {
-		this.logClient = new TCPClient(Constants.broadcastPort, address);
+		try {
+			this.logClient = new TCPClient(Constants.broadcastPort, address);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		this.log();
 	}
 	
@@ -22,10 +30,14 @@ public class Monitor {
 						line = Monitor.this.logClient.readString();
 						System.out.print(line);
 					}
-				} catch (IOException) {
+				} catch (IOException e) {
 					System.out.println("Could not establish connection");
 				}
 			}
 		}).start();
+	}
+	
+	public void stopLogging() {
+		this.logClient.close();
 	}
 }
