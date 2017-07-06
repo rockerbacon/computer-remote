@@ -5,4 +5,6 @@
     <string name="label_password">Digite a senha:</string>
     <string name="label_sendCommands">Comandos:</string>
     <string name="button_send">Enviar</string>
+    <string name="button_cmd_left">LEFT</string>
+    <string name="button_cmd_right">RIGHT</string>
 </resources>

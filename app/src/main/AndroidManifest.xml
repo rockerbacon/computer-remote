@@ -23,6 +23,9 @@
         </activity>
         <activity android:name=".ConnectActivity">
         </activity>
+        <activity android:name=".CommandsActivity">
+        </activity>
+
     </application>
 
 </manifest>
