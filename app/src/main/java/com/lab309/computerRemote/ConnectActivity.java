@@ -30,6 +30,7 @@ public class ConnectActivity extends AppCompatActivity
         setContentView(R.layout.activity_connect);
 
         Intent intent = getIntent();
+        final String sender_name = intent.getStringExtra("sender_name");
 
         ServerModel serv = null;
 
@@ -92,6 +93,10 @@ public class ConnectActivity extends AppCompatActivity
                                     intent.putExtra("server_name", server.getName());
                                     intent.putExtra("server_address", server.getAddress().getAddress());
                                     intent.putExtra("server_passwordProtected", server.isPasswordProtected());
+                                    intent.putExtra("server_mac", server.getMacAddress().getAddress());
+                                    intent.putExtra("server_port", server.getPort());
+                                    intent.putExtra("server_pw", password.getText().toString());
+                                    intent.putExtra("sender_name", sender_name);
                                     startActivity(intent);
                                 }
                                 else
