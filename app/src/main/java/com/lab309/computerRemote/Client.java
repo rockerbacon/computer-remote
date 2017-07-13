@@ -140,6 +140,7 @@ public class Client {
 		listener = new UDPServer (Constants.broadcastPort, Constants.applicationId.length + SizeConstants.sizeOfInt + MacAddress.SIZE);
 		client = new UDPClient (Constants.broadcastPort, server.getAddress());
 		client.send(request);
+		client.close();
 
 		do {
 			answer = listener.receiveExpectedOnTime(Constants.applicationId, Constants.requestResponseTimeLimit, Constants.wrongRequestAnswerLimit);
@@ -149,6 +150,9 @@ public class Client {
 				}
 			}
 		} while (answer != null);
+
+		listener.close();
+
 		if (answer == null) {
 			return UDPServer.STATUS_TIMEOUT;
 		}

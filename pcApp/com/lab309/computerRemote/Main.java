@@ -14,9 +14,9 @@ public class Main {
 
 			server.waitForConnection();
 
-			System.out.println("\nServer is waiting for connections and commands, press enter to stop waiting");
+			System.out.println("\nServer is waiting for connections and commands, type \"exit\" to stop waiting");
 
-			wait.nextLine();
+			while (!wait.nextLine().equals("exit"));
 
 			server.close();
 

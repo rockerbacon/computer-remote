@@ -86,7 +86,7 @@ public class ConnectActivity extends AppCompatActivity
                         {
                             try
                             {
-                                if( Client.connectToServer(server, password.getText().toString()) == UDPServer.STATUS_SUCCESSFUL )
+                                if ( Client.connectToServer(server, password.getText().toString()) == UDPServer.STATUS_SUCCESSFUL )
                                 {
                                     Intent intent = new Intent(ConnectActivity.this, CommandsActivity.class);
 

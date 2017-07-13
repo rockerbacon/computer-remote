@@ -101,24 +101,28 @@ public class Server {
 					switch (command) {
 						case Constants.commandExecuteLine:
 							line = currentCommand.retrieveString();
-							runtime.exec(line);
-							Server.this.log(clientName + '@' + currentCommand.getSender().getHostAddress() + " executed line: " + line);
+							try {
+								runtime.exec(line);
+								Server.this.log(clientName + " @ " + currentCommand.getSender().getHostAddress() + " executed line: " + line);
+							} catch (IOException e) {
+								Server.this.log(clientName + " @ " + currentCommand.getSender().getHostAddress() + " attempted to execute invalid line: " + line);
+							}
 						break;
 						case Constants.commandKeyboardPress:
 							key = currentCommand.retrieveInt();
 							robot.keyPress(key);
-							Server.this.log(clientName + '@' + currentCommand.getSender().getHostAddress() + " pressed key: " + key);
+							Server.this.log(clientName + " @ " + currentCommand.getSender().getHostAddress() + " pressed key: " + key);
 						break;
 						case Constants.commandKeyboardRelease:
 							key = currentCommand.retrieveInt();
 							robot.keyRelease(key);
-							Server.this.log(clientName + '@' + currentCommand.getSender().getHostAddress() + " released key: " + key);
+							Server.this.log(clientName + " @ " + currentCommand.getSender().getHostAddress() + " released key: " + key);
 						break;
 						case Constants.commandKeyboardClick:
 							key = currentCommand.retrieveInt();
 							robot.keyPress(key);
 							robot.keyRelease(key);
-							Server.this.log(clientName + '@' + currentCommand.getSender().getHostAddress() + " clicked key: " + key);
+							Server.this.log(clientName + " @ " + currentCommand.getSender().getHostAddress() + " clicked key: " + key);
 						break;
 					}
 				}
@@ -239,6 +243,8 @@ public class Server {
 								name.pushBoolean (!Server.this.password.equals(""));
 
 								client.send(name);
+								
+								Server.this.log("Client @ " + connectingDeviceIp.getHostAddress() + " requested server's identity");
 
 							} else if (request == Constants.connectionRequest) {
 
@@ -253,9 +259,11 @@ public class Server {
 									//empacota porta e mac address para envio
 									port.pushInt(Server.this.commandsServer.getPort());
 									port.pushByteArray(Server.this.mac.getAddress(), 0, MacAddress.SIZE);
+									Server.this.log("Client @ " + connectingDeviceIp.getHostAddress() + " connected to server");
 								} else {
 									//empacota porta invalida
 									port.pushInt(-1);
+									Server.this.log("Client @ " + connectingDeviceIp.getHostAddress() + " typed wrong password");
 								}
 
 								client.send(port);

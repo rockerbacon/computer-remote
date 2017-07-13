@@ -21,9 +21,9 @@ public class MonitorMain {
 			e.printStackTrace();
 		}	
 		
-		System.out.println("Monitor connected, press enter at any time to exit");
+		System.out.println("Monitor connected, type \"exit\" at any time to exit");
 		
-		scan.nextLine();
+		while(!scan.nextLine().equals("exit"));
 		
 		monitor.stopLogging();
 		
