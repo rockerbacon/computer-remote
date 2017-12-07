@@ -24,6 +24,10 @@ public class ByteBuffer {
 		return this.buffer.length();
 	}
 	
+	public byte[] getByteArray() {
+		return this.buffer;
+	}
+	
 	/*METHODS*/
 	/*PUSH DATA*/
 	public void pushByte (byte b) {
@@ -164,14 +168,14 @@ public class ByteBuffer {
 	}
 	
 	/*DELETE DATA*/
-	public void delete (int size) {
+	public void rewind (int size) {
 		this.offset -= size;
 		if (this.offset < 0) {
 			this.offset = 0;
 		}
 	}
 	
-	public void empty () {
+	public void rewind () {
 		this.offset = 0;
 	}
 }

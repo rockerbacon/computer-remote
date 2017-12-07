@@ -12,8 +12,10 @@ public class Constants {
 
 	private static final String appid = "ComputerControl";
 	public static final byte[] applicationId = ByteArrayConverter.latinStringToArray(appid, new byte[SizeConstants.sizeOfLatinString(appid)], 0);
-	public static final byte identityRequest = 1;
-	public static final byte connectionRequest = 2;
+	
+	public static final byte identityRequestCode = 1;
+	public static final byte connectionRequestCode = 2;
+	
 	public static final int requestResponseTimeLimit = 2000;
 	public static final int wrongRequestAnswerLimit = 20;
 
@@ -23,45 +25,8 @@ public class Constants {
 	public static final int commandBufferSize = SizeConstants.sizeOfInt+257*SizeConstants.sizeOfChar;
 	
 	public static final int commandQueueSize = 10;
+	
+	public static final int publicKeySize = 32;	//size of the public key used in bytes
 
 	/*COMANDOS*/
-
-	/* Variavel: commandExecuteLine
-	 * Campo de dados: | String s |
-	 *
-	 * Executa um processo com seus devidos argumentos de acordo com s. s eh uma string identica a uma string passada manualmente em um terminal
-	 * A execucao de processos sem uma interface grafica que requeiram entrada e saida de usuario poderao bloquear indefinidamente
-	 *
-	 */
-	public static final int commandExecuteLine = 1;
-
-	/* Variavel: commandKeyboardPress
-	 * Campo de dados: | int code |
-	 *
-	 * Pressiona tecla definida por code
-	 */
-	public static final int commandKeyboardPress = 2;
-
-	/* Variavel: commandKeyboardPress
-	 * Campo de dados: | int code |
-	 *
-	 * Solta tecla definida por code
-	 *
-	 */
-	public static final int commandKeyboardRelease = 3;
-	
-	/* Variavel: commandKeyboardClick
-	 * Campo de dados: | int code |
-	 *
-	 * Pressiona e imediatamente solta tecla definida por code
-	 *
-	 */
-	public static final int commandKeyboardClick = 4;
-
-	/* Vriavel: commandSetSoundLevel
-	 * Campo de dados: | float level |
-	 *
-	 * Define nivel de volume como o dado pelo parametro level
-	 */
-	public static final int commandSetSoundLevel = 4;
 }

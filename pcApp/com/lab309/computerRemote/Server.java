@@ -10,140 +10,78 @@ import com.lab309.network.UDPDatagram;
 import com.lab309.network.TCPServer;
 import com.lab309.network.MacAddress;
 import com.lab309.network.NetInfo;
-import com.lab309.adt.ConcurrentStaticQueue;
+
+import com.lab309.steward.CommandsQueue;
+import com.lab309.steward.Steward;
+
 import com.lab309.general.SizeConstants;
+
+import java.security.SecureRandom;
 
 import java.io.IOException;
 import java.net.SocketException;
 
 /*
- *	Classe Server eh responsavel por receber e executar comandos.
- *	Servidor possui um UDPServer conectado a uma porta de broadcasting, fixa e determinada em Constants.broadcastPort, por onde recebe solicitacoes de conexao (Server.broadcastServer).
- *	Servidor possui um UDPServer conectado a uma porta qualquer que esteja disponivel no momento da instanciacao do objeto da classe por onde recebe comandos a serem executados (Server.commandsServer).
- *	Servidor possui um protocolo de handshaking:
- *		1-Cliente envia packet pela porta Constants.broadcastPort para o ip de broadcasting da rede contendo, nessa ordem:
- *			1.1-String Constants.applicationId;
- *			1.2-byte Constants.identityRequest ou String Constants.connectionRequest;
- *			1.3-Se byte em 1.3 == Constants.connectionRequest:
- *					-String password;
- *		2-Servidor recebe o packet enviado em 1 e envia packet pela porta Constants.broadcastPort para o IP do cliente contendo, nessa ordem:
- *			2.1-String Constants.applicationId;
- *			2.2-Se byte em 1.2 == Constants.identityRequest:
- *					-String Server.name;
- *					Se Server.password != "":
- *						-boolean true
- *					Senao
- *						-boolean false
- *				Senao se byte em 1.2 == Constants.connectionRequest:
- *					Se String em 1.3 == Server.password || Server.password == "":
- *						-int contendo porta de Server.commandsServer;
- *						-MacAddress do servidor;
- *					Senao:
- *						-int contendo o valor -1;
+ *	Class for managing connections and receiving commands (but not executing them).
+ *	Server has an UDPServer connected to the breadcast port specified in Constants.broadcastPort, from where it receives connection requests (Server.broadcastServer).
+ *	Server has an UDPServer connected to a random port available at the moment of the object's instantiation from where it receives commands to be executed.
+ *	Server uses RC4 for security
  *
- *	Para recebimento de comandos serve o seguinte protocolo
- *		1-Cliente envia packet pela porta de Server.commandsServer para o ip do servidor, contendo:
- *			1.1-MacAddress do servidor;
- *			1.2-String contendo nome do cliente
- *			1.3-int contendo o id do comando (vide classe Constants);
- *			1.4-data adicional para o comando (vide classe Constants, esse campo eh referenciado como "campo de data");
- *		2-Se Server.mac == MacAddress em 1.1:
- *			-Servidor executa comando;
+ *	The connection protocol goes as follows:
+ *		1-Client broadcasts a packet to the broadcast port, having: (String appId = Constants.applicationId, byte request, String password)
+ *
+ *		2-Server receives the packet and answers to the client's IP through the broadcast port:
+ *			2.1-If request == Constants.identityRequest: (String serverName, boolean isPasswordProtected, byte[] publicKey)
+ *			2.2-If request == Constants.connectionRequest:
+ *					If password == Server.password || Server.password == "": (int commandsPort, byte[] publicKey)
+ *					Else: (int commandsPort = -1)
+ *			See Constants.publicKeySize for the size of the public key
+ *
+ *	The transmission of commands follows the protocol:
+ *		3-Client sends packet throught the port informed in 2.2 to the server's IP, having: (String clientName, int commandId, ... args) 
+ *			For the arguments of each type of command see class Steward
  *
  */
 public class Server {
 
 	/*ATTRIBUTES*/
+	private Steward steward;
+	
 	private String password;
 	private String name;
 	private InetAddress ip;
-	private MacAddress mac;
 	
 	private UDPServer broadcastServer;
 	private UDPServer commandsServer;
 	private TCPServer logServer;
 	
-	private ConcurrentStaticQueue<UDPDatagram> commandQueue;
+	private CommandsQueue commandQueue;
 	private boolean processingCommands;
 	private Object signal;
+	
+	private byte[] publicKey;
 	
 	private boolean waitingForConnection;
 	
 	/*THREADS*/
-	private Runnable processCommands = new Runnable() {
-		@Override
-		public void run () {
-		
-			try {
-				Robot robot = new Robot();
-				Runtime runtime = Runtime.getRuntime();
-		
-				UDPDatagram currentCommand;
-				String clientName;
-				String line;
-				int command;
-				int key;
-			
-				Server.this.processingCommands = true;
-			
-				while (true) {
-					currentCommand = Server.this.commandQueue.pop();
-					while (currentCommand == null && Server.this.processingCommands) {
-						synchronized (Server.this.signal) { Server.this.signal.wait(); }
-						currentCommand = Server.this.commandQueue.pop();
-					}
-					
-					if (!Server.this.processingCommands) { return; }
-				
-					clientName = currentCommand.retrieveString();
-					command = currentCommand.retrieveInt();
-						
-					switch (command) {
-						case Constants.commandExecuteLine:
-							line = currentCommand.retrieveString();
-							try {
-								runtime.exec(line);
-								Server.this.log(clientName + " @ " + currentCommand.getSender().getHostAddress() + " executed line: " + line);
-							} catch (IOException e) {
-								Server.this.log(clientName + " @ " + currentCommand.getSender().getHostAddress() + " attempted to execute invalid line: " + line);
-							}
-						break;
-						case Constants.commandKeyboardPress:
-							key = currentCommand.retrieveInt();
-							robot.keyPress(key);
-							Server.this.log(clientName + " @ " + currentCommand.getSender().getHostAddress() + " pressed key: " + key);
-						break;
-						case Constants.commandKeyboardRelease:
-							key = currentCommand.retrieveInt();
-							robot.keyRelease(key);
-							Server.this.log(clientName + " @ " + currentCommand.getSender().getHostAddress() + " released key: " + key);
-						break;
-						case Constants.commandKeyboardClick:
-							key = currentCommand.retrieveInt();
-							robot.keyPress(key);
-							robot.keyRelease(key);
-							Server.this.log(clientName + " @ " + currentCommand.getSender().getHostAddress() + " clicked key: " + key);
-						break;
-					}
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}	
-	};
 	
 	/*CONSTRUCTORS*/
 	public Server (String password) throws IOException {
- 
+ 		SecureRandom s;
+ 		this.steward = new Steward();
+ 		
 		this.password = password;
 		this.name = InetAddress.getLocalHost().getHostName();
 		//System.out.println(this.name);	//debug
 		this.ip = NetInfo.thisMachineIpv4();
-		this.mac = new MacAddress(NetInfo.machineMacByIp(this.ip), 0);
 
 		this.commandsServer = new UDPServer (Constants.commandBufferSize);
 		this.commandQueue = new ConcurrentStaticQueue<UDPDatagram> (Constants.commandQueueSize);
 		this.signal = new Object();
+		
+		this.publicKey = new byte[Constants.publicKeySize];
+		s = new SecureRandom();
+		s.nextBytes(this.publicKey);
 		
 		this.logServer = new TCPServer(Constants.broadcastPort);
 		new Thread( new Runnable () {
@@ -172,10 +110,6 @@ public class Server {
 
 	public InetAddress getAddress() {
 		return ip;
-	}
-
-	public MacAddress getMacAddress() {
-		return mac;
 	}
 
 	/*METHODS*/

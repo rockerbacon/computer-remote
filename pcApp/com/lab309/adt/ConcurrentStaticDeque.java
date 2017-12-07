@@ -29,10 +29,18 @@ public class ConcurrentStaticDeque<T> {
 	public int length () {
 		return this.length;	
 	}
+	
+	public int size () {
+		return this.data.length;
+	}
 
 	/*METHODS*/
 	public boolean full () {
 		return this.length == this.data.length;	
+	}
+	
+	public boolean empty () {
+		return this.length == 0;
 	}
 
 	@SuppressWarnings("unchecked")
