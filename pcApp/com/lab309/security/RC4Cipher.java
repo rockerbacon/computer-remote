@@ -9,10 +9,18 @@ public class RC4Cipher {
 	/*ATRIBUTES*/
 	private Cipher cipher;
 	private KeyGenerator keygen;
+	private byte[] publicKey;
 	
 	/*CONSTRUCTORS*/
 	public RC4Cipher (byte[] publicKey) {
 		this.setKey(publicKey);
+	}
+	
+	public RC4Cipher (int publicKeySize) {
+		this.publicKey = new byte[publicKeySize];
+		s = new SecureRandom();
+		s.nextBytes(this.publicKey);
+		this.setKey(this.publicKey);
 	}
 	
 	/*SETTERS*/

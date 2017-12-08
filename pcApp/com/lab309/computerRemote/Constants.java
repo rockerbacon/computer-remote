@@ -10,19 +10,17 @@ import com.lab309.general.ByteArrayConverter;
 public class Constants {
 	public static final int broadcastPort = 0x4343;	//representa a string "CC"
 
-	private static final String appid = "ComputerControl";
-	public static final byte[] applicationId = ByteArrayConverter.latinStringToArray(appid, new byte[SizeConstants.sizeOfLatinString(appid)], 0);
+	private static final String helloMessage = "CChello";
+	private static final String connectMessage = "CCConnect";
 	
-	public static final byte identityRequestCode = 1;
-	public static final byte connectionRequestCode = 2;
-	
-	public static final int requestResponseTimeLimit = 2000;
-	public static final int wrongRequestAnswerLimit = 20;
+	public static final int answerTimeLimit = 2000;
+	public static final int wrongAnswerLimit = 20;
 
-	public static final int maxIdStringSize = 65*SizeConstants.sizeOfChar;
-	public static final int maxPasswordString = 37*SizeConstants.sizeOfChar;
-	public static final int broadcastBufferSize = applicationId.length + SizeConstants.sizeOfByte + maxPasswordString;
-	public static final int commandBufferSize = SizeConstants.sizeOfInt+257*SizeConstants.sizeOfChar;
+	public static final int maxName = 64*SizeConstants.sizeOfChar;
+	public static final int maxCommandArgSize = 1*1024*1024;	//1mb
+	
+	public static final int broadcastBufferSize = SizeConstants.sizeOfString(connectMessage)+SizeConstants.sizeOfInt+maxName;
+	public static final int commandBufferSize = SizeConstants.sizeOfByte+maxCommandArgSize;
 	
 	public static final int commandQueueSize = 10;
 	

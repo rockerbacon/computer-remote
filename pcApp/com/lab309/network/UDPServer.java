@@ -94,7 +94,8 @@ public class UDPServer {
 		return this.receiveOnTime(timeInMillis, 1);
 	}
 
-	//retorna null se o datagrama errado foi recebido
+	//waits for a package with the first bytes matching "expected" to be received
+	//returns a datagram offseted to after the expected bytes
 	public UDPDatagram receiveExpected (byte[] expected) throws IOException {
 		byte[] array;
 

@@ -178,4 +178,8 @@ public class ByteBuffer {
 	public void rewind () {
 		this.offset = 0;
 	}
+	
+	public void skip (int size) {
+		this.offset += size;
+	}
 }
