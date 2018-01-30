@@ -12,6 +12,7 @@ public class Constants {
 
 	private static final String helloMessage = "CChello";
 	private static final String connectMessage = "CCConnect";
+	private static final String finishConnectMessage = "CCfconnect";
 	
 	public static final int answerTimeLimit = 2000;
 	public static final int wrongAnswerLimit = 20;
@@ -19,7 +20,8 @@ public class Constants {
 	public static final int maxName = 64*SizeConstants.sizeOfChar;
 	public static final int maxCommandArgSize = 1*1024*1024;	//1mb
 	
-	public static final int broadcastBufferSize = SizeConstants.sizeOfString(connectMessage)+SizeConstants.sizeOfInt+maxName;
+	public static final int broadcastBufferSize = SizeConstants.sizeOfString(helloMessage);
+	public static final int connectionBufferSize = SizeConstants.sizeOfString(connectMessage)+SizeConstants.sizeOfInt+Constants.maxName;
 	public static final int commandBufferSize = SizeConstants.sizeOfByte+maxCommandArgSize;
 	
 	public static final int commandQueueSize = 10;
