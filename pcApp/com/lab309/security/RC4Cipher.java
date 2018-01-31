@@ -15,10 +15,14 @@ public class RC4Cipher implements Cipher {
 	
 	/*CONSTRUCTORS*/
 	public RC4Cipher (byte[] publicKey) {
+		this.cipher = Cipher.getInstance("RC4");
+		this.keygen = KeyGenerator.getInstance("RC4");
 		this.setKey(publicKey);
 	}
 	
 	public RC4Cipher (int publicKeySize) {
+		this.cipher = Cipher.getInstance("RC4");
+		this.keygen = KeyGenerator.getInstance("RC4");
 		this.publicKey = new byte[publicKeySize];
 		s = new SecureRandom();
 		s.nextBytes(this.publicKey);
@@ -36,8 +40,6 @@ public class RC4Cipher implements Cipher {
 		if (this.publicKey != publicKey) {
 			ByteArrayConverter.copyArrayTo(publicKey, 0, publicKey.length, this.publicKey, 0);
 		}
-		this.cipher = Cipher.getInstance("RC4");
-		this.keygen = KeyGenerator.getInstance("RC4");
 		this.keygen.init(new SecureRandom(publicKey));
 	}
 	

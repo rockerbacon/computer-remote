@@ -63,7 +63,6 @@ import java.net.SocketException;
  *
  *	The transmission of commands follows the protocol:
  *		3-Client sends packet throught the command port to the server's IP, having: (byte commandId, ... args)
- *			All the contents, including the client name must be encrypted using RC4 if the server has encryption enabled
  *			For the arguments of each type of command see class Steward
  *
  *
@@ -122,6 +121,7 @@ public class Server {
 		
 		this.broadcastAvailability();
 		this.waitForConnections();
+		this.checkConnections();
 		this.waitForCommands();
 	}
 
@@ -182,11 +182,9 @@ public class Server {
 			UDPDatagram received;
 			UDPClient client;
 			UDPDatagram packet = new UDPDatagram(Constants.maxName+2*SizeConstants.sizeOfBoolean+Constants.publicKeySize);
-			ByteBuffer message;
 			byte[] password = new byte[32];
 			byte[] connectMessage = ByteArrayConverter.stringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfString(Constants.connectMessage)], 0);
 			byte[] fconnectMessage = ByteArrayConverter.stringToArray(Constants.finishConnectMessage, new byte[SizeConstants.sizeOfString(Constants.finishConnectMessage)], 0);
-			int port;
 			Connection connection;
 
 			while (true) {
@@ -233,13 +231,53 @@ public class Server {
 	}}).start();
 	}
 	
+	private void checkConnections () { new Thread ( new Runnable () { public void run() {
+		try {
+			byte[] newKey = new byte[Constants.publicKeySize];
+			byte[] checkMessage = ByteArrayConverter.stringToArray(Constants.connectionCheckMessage, new byte[SizeConstants.sizeOfString(Constants.connectionCheckMessage)], 0);
+			SecureRandom rnd = new SecureRandom();
+			UDPServer server = new UDPServer(SizeConstants.sizeOfString(Constants.connectionCheckMessage), Server.this.cipher);
+			
+			UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Constants.connectionCheckMessage)+SizeConstants.sizeOfInt+newKey.length);
+			UDPDatagram received;
+			
+			packet.getBuffer().pushString(Constants.connectionCheckMessage);
+			packet.getBuffer().pushInt(server.getPort());
+			packet.getBuffer().pushByteArray(newKey);
+			
+			while (true) {
+				rnd.nextBytes(newKey);
+				
+				for (Map.Entry<InnetAddress, Connection> connection : Server.this.connections.entrySet()) {
+					UDPClient client = new UDPClient (connection.getKey(), connection.getValue().feedbackPort, Server.this.cipher);
+					client.send(packet);
+					client.close();
+					
+					received = server.receiveExpectedOnTime(checkMessage, Constants.answerTimeLimit, Constants.wrongAnswerLimit);
+					if (received == null) {
+						Server.this.connections.remove(connection.getKey());
+					}
+				}
+				
+				Server.this.cipher.setKey(newKey);	
+			}
+		} catch (SocketException e) {
+			System.out.println (e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}}).start();
+	}
+	
 	private void waitForCommands () { new Thread ( new Runnable () { public void run () {
 		try {
 			UDPDatagram received;
 
 			while (true) {
 				received = Server.this.commandsServer.receive();
-				Server.this.commandQueue.push(received);
+				if (Server.this.connections.containsKey(received.getSender())) {
+					Server.this.commandQueue.push(received);
+				}
 			}
 		} catch (SocketException e) {
 			System.out.println(e.getMessage());
