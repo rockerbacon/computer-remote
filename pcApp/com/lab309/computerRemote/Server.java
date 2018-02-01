@@ -46,10 +46,10 @@ import java.net.SocketException;
  
  *	The connection protocol goes as follows:
  *
- *		1-Client sends a packet to the server's IP through the connection port, having: (Constants.connectMessage, byte[] password)
+ *		1-Client sends a packet to the server's IP through the connection port, having: (Constants.connectMessage, int answerPort, byte[] password)
  *			Password needs to be present only if the server has a password
  *
- *		2-Server sends a packet to the client's IP through the connection port, having: (int commandsPort)
+ *		2-Server sends a packet to the client's IP through the answer port, having: (int commandsPort)
  *			If the password was not accepted commandsPort will be -1
  *
  *		3-Client sends a packet to the server's IP through the connection port, having: (Constants.finishConnectMessage, int feedbackPort, String clientName), after which the connection is fully established
@@ -112,7 +112,7 @@ public class Server {
 		this.name = InetAddress.getLocalHost().getHostName();
 		//System.out.println(this.name);	//debug
 
-		this.broadcastServer = new UDPServer(Constants.broadcastPort, Constants.broadcastBufferSize, this.cipher);
+		this.broadcastServer = new UDPServer(Constants.broadcastPort, Constants.broadcastBufferSize, null);
 		this.connectionServer = new UDPServer(Constants.connectionBufferSize, this.cipher);
 		
 		this.commandsServer = new UDPServer (Constants.commandBufferSize, this.cipher);
@@ -162,7 +162,7 @@ public class Server {
 				
 				//answer hello message
 				packet.getBuffer().pushByteArray(Server.this.publicKey);
-				client = new UDPClient (received.getSender(), Constants.broadcastPort, this.cipher);
+				client = new UDPClient (Constants.broadcastPort,received.getSender(), null);
 				client.send(packet);
 				client.close();
 				packet.getBuffer().rewind(Server.this.publicKey.length);
@@ -186,12 +186,14 @@ public class Server {
 			byte[] connectMessage = ByteArrayConverter.stringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfString(Constants.connectMessage)], 0);
 			byte[] fconnectMessage = ByteArrayConverter.stringToArray(Constants.finishConnectMessage, new byte[SizeConstants.sizeOfString(Constants.finishConnectMessage)], 0);
 			Connection connection;
+			int answerPort;
 
 			while (true) {
 
 				//wait for connection message
 				received = Server.this.connectionServer.receiveExpected(connectMessage);
 				
+				answerPort = received.getBuffer().retrieveInt();
 				if (Server.this.password != null) {
 					received.getBuffer().retrieveByteArray(password.length, password, 0);
 				
@@ -203,7 +205,7 @@ public class Server {
 				}
 				
 				//answer connection message
-				client = new UDPClient (received.getSender(), Server.this.connectionServer.getPort(), this.cipher);
+				client = new UDPClient (answerPort, received.getSender(), this.cipher);
 				
 				packet.getBuffer().pushInt(port);
 				client.send(packet);
@@ -249,7 +251,7 @@ public class Server {
 				rnd.nextBytes(newKey);
 				
 				for (Map.Entry<InnetAddress, Connection> connection : Server.this.connections.entrySet()) {
-					UDPClient client = new UDPClient (connection.getKey(), connection.getValue().feedbackPort, Server.this.cipher);
+					UDPClient client = new UDPClient (connection.getValue().feedbackPort, connection.getKey(), Server.this.cipher);
 					client.send(packet);
 					client.close();
 					

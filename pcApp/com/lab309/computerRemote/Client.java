@@ -23,7 +23,7 @@ public class Client {
 	private static String name;
 	private InetAddress ip;
 	private LinkedList<InetAddress> broadcasters;
-	private transient ArrayList<ServerModel> availableServers;
+	private ArrayList<ServerModel> availableServers;
 	private ArrayList<ServerModel> connectedServers;
 	private transient final Object availableServersLock = new Object();
 	private transient final Object connectedServersLock = new Object();
@@ -70,49 +70,35 @@ public class Client {
 	}
 
 	/*METHODS*/
-	public void requestIdentities () throws IOException {
-		UDPDatagram received = null;
-		UDPDatagram request;
-		String serverName;
-		InetAddress serverIp;
-		boolean passwordProtected;
+	public void searchServers () throws IOException {
 		UDPClient client;
-		UDPServer listener;
-
-		request = new UDPDatagram(Constants.applicationId.length + SizeConstants.sizeOfByte);
-
-		request.pushByteArray(Constants.applicationId);
-		request.pushByte(Constants.identityRequest);
-
-		for (InetAddress broadcastIp : this.broadcasters) {
-			client = new UDPClient(Constants.broadcastPort, broadcastIp);
-			client.send(request);
+		UDPServer server = new UDPServer (Constants.broadcastPort, Constants.maxName+SizeConstants.sizeOfInt+2*SizeConstants.sizeOfBoolean+Constants.publicKeySize, null);
+		UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Constants.helloMessage));
+		ServerModel availableServer;
+		
+		packet.getBuffer().pushString(Constants.helloMessage);
+		
+		//broadcast hello message
+		for (InetAddress addr : this.broadcasters) {
+			client = new UDPClient(Constants.broadcastPort, addr, null);
+			client.send(packet);
 			client.close();
 		}
-
-		listener = new UDPServer(Constants.broadcastPort, Constants.applicationId.length + Constants.maxIdStringSize + SizeConstants.sizeOfBoolean);
-
-		while ( ( received = listener.receiveExpectedOnTime(Constants.applicationId, Constants.requestResponseTimeLimit, Constants.wrongRequestAnswerLimit) ) != null ) {
-
-			//ignora datagrama enviado ao loopback
-			serverIp = received.getSender();
-			if (serverIp.equals(this.ip)) {
-				continue;
-			}
-			//Log.d("Client reqid", serverIp.getHostAddress());	//debug
-
-			serverName = received.retrieveString();
-			//Log.d("Client reqid", serverName);	//debug
-			passwordProtected = received.retrieveBoolean();
-
-			synchronized (Client.this.availableServersLock) {
-				Client.this.availableServers.add(new ServerModel(serverName, serverIp, passwordProtected));
-			}
-
+		
+		//populate list of available servers
+		while ( (packet = server.receiveOnTime(Constants.answerTimeLimit, Constants.wrongAnswerLimit)) != null) {
+			String name = packet.getBuffer().retrieveString();
+			int connectionPort = packet.getBuffer().retrieveInt();
+			boolean passProtected = packet.getBuffer().retrieveBoolean();
+			boolean encrypted = packet.getBuffer().retrieveBoolean();
+			byte[] publicKey = null;
+			if (encrypted) publicKey = packet.getBuffer().retrieveByteArray(Constants.publicKeySize, new byte[Constants.publicKeySize], 0);
+			
+			ServerModel availableServer = new ServerModel(packet.getSender(), name, connectionPort, passProtected, publicKey);
+			
+			this.availableServers.add(availableServer);
 		}
-
-		listener.close();
-
+		
 	}
 
 	/*
@@ -124,43 +110,42 @@ public class Client {
 	 */
 	public static int connectToServer (ServerModel server, String password) throws IOException {
 
-		UDPServer listener;
-		UDPClient client;
-		int serverPort;
-		MacAddress serverMac;
-		UDPDatagram request = new UDPDatagram(Constants.applicationId.length + SizeConstants.sizeOfByte + SizeConstants.sizeOfString(password));
+		RC4Cipher cipher = server.getCipher();
+		UDPClient client = new UDPClient(server.getConnectionPort, server.getAddress, cipher);
+		UDPServer server = new UDPServer(SizeConstants.sizeOfInt, cipher);
+		UDPDatagram request = new UDPDatagram(SizeConstants.sizeOfString(Constants.finishConnectMessage)+SizeConstants.sizeOfInt+Constants.maxName);
 		UDPDatagram answer;
+		byte[] passHash = new SHA256Hasher().hash( ByteArrayConverter.stringToArray(password, new byte[SizeConstants.sizeOfString(password)], 0) );
+		int serverPort;
 
-		//preparar request
-		request.pushByteArray(Constants.applicationId);
-		request.pushByte(Constants.connectionRequest);
-		request.pushString(password);
-
-		//Log.d("Client connect", server.getAddress().getHostAddress());	//debug
-		listener = new UDPServer (Constants.broadcastPort, Constants.applicationId.length + SizeConstants.sizeOfInt + MacAddress.SIZE);
-		client = new UDPClient (Constants.broadcastPort, server.getAddress());
+		//send connection request
+		request.getBuffer().pushString(Constants.connectMessage);
+		request.getBuffer().pushInt(server.getPort());
+		request.getBuffer().pushByteArray(passHash);
 		client.send(request);
 
-		do {
-			answer = listener.receiveExpectedOnTime(Constants.applicationId, Constants.requestResponseTimeLimit, Constants.wrongRequestAnswerLimit);
-			if (answer != null) {
-				if ( server.getAddress().equals(answer.getSender()) ) {
-					break;
-				}
-			}
-		} while (answer != null);
+		//receive connection port
+		answer = server.receiveOnTime(Constants.answerTimeLimit, Constants.wrongAnswerLimit);
+		server.close();
 		if (answer == null) {
+			client.close();
 			return UDPServer.STATUS_TIMEOUT;
 		}
 
-		serverPort = answer.retrieveInt();
+		serverPort = answer.getBuffer().retrieveInt();
 		if (serverPort == -1) {
+			client.close();
 			return UDPServer.STATUS_PACKET_NOT_EXPECTED;
 		}
+		
+		//finish connection
+		server.confirmConnection(serverPort, password);
+		
+		request.getBuffer().rewind();
+		request.getBuffer().pushString(Constants.finishConnectMessage);
+		request.getBuffer().pushInt(server.getFeedbackServer().getPort());
+		request.getBuffer().pushString(this.name);
 
-		serverMac = new MacAddress(answer.retrieveByteArray(MacAddress.SIZE, new byte[MacAddress.SIZE], 0), 0);
-
-		server.confirmConnection(serverMac, serverPort, password);
 		/*
 		synchronized (this.availableServersLock) {
 			this.availableServers.remove(index);
@@ -172,6 +157,7 @@ public class Client {
 		}
 		*/
 
+		client.close();
 		return UDPServer.STATUS_SUCCESSFUL;
 
 	}

@@ -20,6 +20,7 @@ public class Constants {
 
 	public static final int maxName = 64*SizeConstants.sizeOfChar;
 	public static final int maxCommandArgSize = 1*1024*1024;	//1mb
+	public static final int maxErrorMessage = 256*SizeConstants.sizeOfChar;
 	
 	public static final int broadcastBufferSize = SizeConstants.sizeOfString(helloMessage);
 	public static final int connectionBufferSize = SizeConstants.sizeOfString(connectMessage)+SizeConstants.sizeOfInt+Constants.maxName;

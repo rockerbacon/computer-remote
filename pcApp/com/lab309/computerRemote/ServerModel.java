@@ -15,42 +15,49 @@ import java.net.InetAddress;
 
 public class ServerModel implements Serializable {
 	/*ATTRIBUTES*/
-	private String name;
 	private InetAddress ip;
+	private String name;
+	private int connectionPort;
 	private boolean passwordProtected;
-	private MacAddress mac;
+	private RC4Cipher cipher;
+	
 	private transient UDPClient clientToServer;
+	private transient UDPServer feedbackServer;
 	private String password;
 
-	/*CONSTRUTORS*/
-	public ServerModel (String name, InetAddress ip, boolean passwordProtected) {
-		this.name = name;
+	/*CONSTRUCTORS*/
+	public ServerModel (InetAddress ip, String name, int connectionPort, boolean passwordProtected, byte[] publicKey) {
 		this.ip = ip;
+		this.name = name;
+		this.connectionPort = connectionPort;
 		this.passwordProtected = passwordProtected;
-		this.mac = null;
-		this.clientToServer = null;
-		this.password = null;
+		this.cipher = null;
+		if (publicKey != null) this.cipher = new RC4Cipher (publicKey);
 	}
 
 	/*GETTERS*/
-	public String getName () {
-		return this.name;
-	}
-
 	public InetAddress getAddress () {
 		return this.ip;
 	}
-
-	public MacAddress getMacAddress () {
-		return this.mac;
+	
+	public String getName () {
+		return this.name;
+	}
+	
+	public int getConnectionPort() {
+		return this.connectionPort;
+	}
+	
+	public boolean isPasswordProtected () {
+		return this.passwordProtected;
+	}
+	
+	public RC4Cipher getCipher () {
+		return this.cipher;
 	}
 
 	public String getPassword () {
 		return this.password;
-	}
-
-	public boolean isPasswordProtected () {
-		return this.passwordProtected;
 	}
 
 	public boolean isConnected () {
@@ -63,12 +70,16 @@ public class ServerModel implements Serializable {
 		}
 		return this.clientToServer.getPort();
 	}
+	
+	public int getFeedbackServer () {
+		return this.feedbackServer;
+	}
 
 	/*METHODS*/
-	public void confirmConnection (MacAddress mac, int serverPort, String password) throws IOException {
+	public void confirmConnection (int serverPort, String password) throws IOException {
 		if (this.clientToServer == null) {
-			this.mac = mac;
-			this.clientToServer = new UDPClient(serverPort, this.ip);
+			this.clientToServer = new UDPClient(serverPort, this.ip, this.cipher);
+			this.feedbackServer = new UDPServer(Constants.maxErrorMessage, this.cipher);
 			this.password = password;
 		}
 
