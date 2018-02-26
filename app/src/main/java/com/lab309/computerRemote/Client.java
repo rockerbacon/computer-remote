@@ -1,12 +1,16 @@
 package com.lab309.computerRemote;
 
-import com.lab309.network.MacAddress;
 import com.lab309.network.NetInfo;
 import com.lab309.network.UDPClient;
 import com.lab309.network.UDPServer;
 import com.lab309.network.UDPDatagram;
 
+import com.lab309.security.Cipher;
+import com.lab309.security.RC4Cipher;
+import com.lab309.security.SHA256Hasher;
+
 import com.lab309.general.SizeConstants;
+import com.lab309.general.ByteArrayConverter;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -23,7 +27,7 @@ public class Client {
 	private String name;
 	private InetAddress ip;
 	private LinkedList<InetAddress> broadcasters;
-	private transient ArrayList<ServerModel> availableServers;
+	private ArrayList<ServerModel> availableServers;
 	private ArrayList<ServerModel> connectedServers;
 	private transient final Object availableServersLock = new Object();
 	private transient final Object connectedServersLock = new Object();
@@ -37,7 +41,7 @@ public class Client {
 			throw new IOException("Could not connect to network");
 		}
 		this.availableServers = new ArrayList<ServerModel>();
-		this.connectedServers = new ArrayList<ServerModel>(5);
+		this.connectedServers = new ArrayList<ServerModel>(3);
 	}
 
 	/*GETTERS*/
@@ -70,116 +74,73 @@ public class Client {
 	}
 
 	/*METHODS*/
-	public void requestIdentities () throws IOException {
-		UDPDatagram received = null;
-		UDPDatagram request;
-		String serverName;
-		InetAddress serverIp;
-		boolean passwordProtected;
+	public void searchServers () throws IOException {
 		UDPClient client;
-		UDPServer listener;
-
-		request = new UDPDatagram(Constants.applicationId.length + SizeConstants.sizeOfByte);
-
-		request.pushByteArray(Constants.applicationId);
-		request.pushByte(Constants.identityRequest);
-
-		for (InetAddress broadcastIp : this.broadcasters) {
-			client = new UDPClient(Constants.broadcastPort, broadcastIp);
-			client.send(request);
+		UDPServer server = new UDPServer (Constants.broadcastPort, SizeConstants.sizeOfString(Constants.helloMessage), null);
+		UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Constants.helloMessage));
+		
+		packet.getBuffer().pushString(Constants.helloMessage);
+		
+		//broadcast hello message
+		for (InetAddress addr : this.broadcasters) {
+			client = new UDPClient(Constants.broadcastPort, addr, null);
+			client.send(packet);
 			client.close();
 		}
-
-		listener = new UDPServer(Constants.broadcastPort, Constants.applicationId.length + Constants.maxIdStringSize + SizeConstants.sizeOfBoolean);
-
-		while ( ( received = listener.receiveExpectedOnTime(Constants.applicationId, Constants.requestResponseTimeLimit, Constants.wrongRequestAnswerLimit) ) != null ) {
-
-			//ignora datagrama enviado ao loopback
-			serverIp = received.getSender();
-			if (serverIp.equals(this.ip)) {
-				continue;
-			}
-			//Log.d("Client reqid", serverIp.getHostAddress());	//debug
-
-			serverName = received.retrieveString();
-			//Log.d("Client reqid", serverName);	//debug
-			passwordProtected = received.retrieveBoolean();
-
-			synchronized (Client.this.availableServersLock) {
-				Client.this.availableServers.add(new ServerModel(serverName, serverIp, passwordProtected));
-			}
-
+		
+		//populate list of available servers
+		while ( (packet = server.receiveOnTime(Constants.answerTimeLimit, Constants.wrongAnswerLimit)) != null) {
+			String name = packet.getBuffer().retrieveString();
+			int connectionPort = packet.getBuffer().retrieveInt();
+			byte validationByte = packet.getBuffer().retrieveByte();
+			ServerModel availableServer = new ServerModel(packet.getSender(), name, connectionPort, validationByte);
+			
+			this.availableServers.add(availableServer);
 		}
-
-		listener.close();
-
+		
 	}
 
 	/*
 	 *	Retorna:
-	 * 		UDPServer.STATUS_SUCCESSFUL se conexao foi estabelecida
-	 * 		UDPServer.STATUS_PACKET_NOT_EXPECTED se senha eh invalida
-	 *		UDPServer.STATUS_TIMEOUT se servidor nao respondeu
+	 * 		UDPServer.STATUS_SUCCESSFUL if the connection was established successfuly
+	 *		UDPServer.STATUS_TIMEOUT if server did not respond (possibly invalid password)
 	 *
 	 */
-	public static int connectToServer (ServerModel server, String password) throws IOException {
+	public int connectToServer (ServerModel connection, byte[] password) throws IOException {
+	
+		Cipher cipher = new RC4Cipher(new SHA256Hasher().hash(password));
+		UDPClient client = new UDPClient(connection.getConnectionPort(), connection.getAddress(), cipher);
+		UDPServer server = new UDPServer(SizeConstants.sizeOfString(Constants.connectMessage)+SizeConstants.sizeOfInt, cipher);
+		UDPDatagram packet = new UDPDatagram (SizeConstants.sizeOfString(Constants.finishConnectMessage)+Constants.maxName+SizeConstants.sizeOfInt);
+		byte[] connectMessage = ByteArrayConverter.stringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfString(Constants.connectMessage)], 0);
+		UDPDatagram received;
+		int commandsPort;
+		
+		packet.getBuffer().pushString(Constants.connectMessage);
+		packet.getBuffer().pushInt(server.getPort());
+		client.send(packet);
+		packet.getBuffer().rewind();
 
-		UDPServer listener;
-		UDPClient client;
-		int serverPort;
-		MacAddress serverMac;
-		UDPDatagram request = new UDPDatagram(Constants.applicationId.length + SizeConstants.sizeOfByte + SizeConstants.sizeOfString(password));
-		UDPDatagram answer;
-
-		//preparar request
-		request.pushByteArray(Constants.applicationId);
-		request.pushByte(Constants.connectionRequest);
-		request.pushString(password);
-
-		//Log.d("Client connect", server.getAddress().getHostAddress());	//debug
-		listener = new UDPServer (Constants.broadcastPort, Constants.applicationId.length + SizeConstants.sizeOfInt + MacAddress.SIZE);
-		client = new UDPClient (Constants.broadcastPort, server.getAddress());
-		client.send(request);
-		client.close();
-
-		do {
-			answer = listener.receiveExpectedOnTime(Constants.applicationId, Constants.requestResponseTimeLimit, Constants.wrongRequestAnswerLimit);
-			if (answer != null) {
-				if ( server.getAddress().equals(answer.getSender()) ) {
-					break;
-				}
-			}
-		} while (answer != null);
-
-		listener.close();
-
-		if (answer == null) {
+		received = server.receiveExpectedOnTime(connectMessage, Constants.answerTimeLimit, Constants.wrongAnswerLimit);
+		if (received == null) {
 			return UDPServer.STATUS_TIMEOUT;
 		}
-
-		serverPort = answer.retrieveInt();
-		if (serverPort == -1) {
-			return UDPServer.STATUS_PACKET_NOT_EXPECTED;
-		}
-
-		serverMac = new MacAddress(answer.retrieveByteArray(MacAddress.SIZE, new byte[MacAddress.SIZE], 0), 0);
-
-		server.confirmConnection(serverMac, serverPort, password);
-		/*
-		synchronized (this.availableServersLock) {
-			this.availableServers.remove(index);
-		}
-		*/
-		/*
-		synchronized (this.connectedServersLock) {
-			this.connectedServers.add(server);
-		}
-		*/
-
+		
+		commandsPort = received.getBuffer().retrieveInt();
+		connection.confirmConnection(cipher.getKey(), commandsPort);
+		
+		packet.getBuffer().pushString(Constants.finishConnectMessage);
+		packet.getBuffer().pushInt(connection.getFeedbackServer().getPort());
+		packet.getBuffer().pushString(this.name);
+		client.send(packet);
+		
+		this.connectedServers.add(connection);
+		
 		return UDPServer.STATUS_SUCCESSFUL;
 
 	}
 
+	/*
 	public void checkConnections () throws IOException {
 		synchronized (this.connectedServersLock) {
 
@@ -214,24 +175,17 @@ public class Client {
 		}
 
 	}
+	*/
 
-	private static UDPDatagram prepareCommandDatagram (ServerModel server, String senderName, int commandDataSize) {
-		UDPDatagram command = new UDPDatagram (MacAddress.SIZE + SizeConstants.sizeOfString(senderName) + SizeConstants.sizeOfInt + commandDataSize);
-
-		command.pushByteArray(server.getMacAddress().getAddress(), 0, server.getMacAddress().getAddress().length);
-		command.pushString(senderName);
-
-		return command;
-	}
-
-	public static void executeLine (final ServerModel server, final String senderName, final String line) {
+	/*
+	public static void executeLine (final ServerModel server, final String line) {
 		new Thread (new Runnable () {
 			@Override
 			public void run () {
 				try {
 					UDPDatagram command;
 
-					command = Client.prepareCommandDatagram(server, senderName, SizeConstants.sizeOfString(line));
+					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfString(line));
 
 					command.pushInt(Constants.commandExecuteLine);
 					command.pushString(line);
@@ -244,14 +198,14 @@ public class Client {
 		}).start();
 	}
 
-	public static void keyboardPress (final ServerModel server, final String senderName, final int keycode) {
+	public static void keyboardPress (final ServerModel server, final int keycode) {
 		new Thread ( new Runnable() {
 			@Override
 			public void run() {
 				try {
 					UDPDatagram command;
 
-					command = Client.prepareCommandDatagram(server, senderName, SizeConstants.sizeOfInt);
+					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
 
 					command.pushInt(Constants.commandKeyboardPress);
 					command.pushInt(keycode);
@@ -264,14 +218,14 @@ public class Client {
 		}).start();
 	}
 
-	public static void keyboardRelease (final ServerModel server, final String senderName, final int keycode) {
+	public static void keyboardRelease (final ServerModel server, final int keycode) {
 		new Thread ( new Runnable() {
 			@Override
 			public void run() {
 				try {
 					UDPDatagram command;
 
-					command = Client.prepareCommandDatagram(server, senderName, SizeConstants.sizeOfInt);
+					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
 
 					command.pushInt(Constants.commandKeyboardRelease);
 					command.pushInt(keycode);
@@ -284,17 +238,18 @@ public class Client {
 		}).start();
 	}
 
-	public static void keyboardClick (final ServerModel server, final String senderName, final int keycode) {
+	//sound level deve ser um valor em porcentagem entre 0 e 1
+	public static void setSound (final ServerModel server, final float soundLevel) {
 		new Thread ( new Runnable() {
 			@Override
 			public void run() {
 				try {
 					UDPDatagram command;
 
-					command = Client.prepareCommandDatagram(server, senderName, SizeConstants.sizeOfInt);
+					command = Client.prepareCommandDatagram(server, SizeConstants.sizeOfInt);
 
-					command.pushInt(Constants.commandKeyboardClick);
-					command.pushInt(keycode);
+					command.pushInt(Constants.commandSetSoundLevel);
+					command.pushFloat(soundLevel);
 
 					server.send(command);
 				} catch (IOException e) {
@@ -303,6 +258,7 @@ public class Client {
 			}
 		}).start();
 	}
+	*/
 
 	public void clearAvailableServers () {
 		synchronized (this.availableServersLock) {

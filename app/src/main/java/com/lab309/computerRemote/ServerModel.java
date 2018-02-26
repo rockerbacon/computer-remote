@@ -1,8 +1,11 @@
 package com.lab309.computerRemote;
 
-import com.lab309.network.MacAddress;
 import com.lab309.network.UDPClient;
+import com.lab309.network.UDPServer;
 import com.lab309.network.UDPDatagram;
+
+import com.lab309.security.Cipher;
+import com.lab309.security.RC4Cipher;
 
 import java.io.Serializable;
 
@@ -15,42 +18,43 @@ import java.net.InetAddress;
 
 public class ServerModel implements Serializable {
 	/*ATTRIBUTES*/
-	private String name;
 	private InetAddress ip;
-	private boolean passwordProtected;
-	private MacAddress mac;
+	private String name;
+	private int connectionPort;
+	private Cipher cipher;
+	private byte validationByte;
+	
 	private transient UDPClient clientToServer;
-	private String password;
+	private transient UDPServer feedbackServer;
 
-	/*CONSTRUTORS*/
-	public ServerModel (String name, InetAddress ip, boolean passwordProtected) {
-		this.name = name;
+	/*CONSTRUCTORS*/
+	public ServerModel (InetAddress ip, String name, int connectionPort, byte validationByte) {
 		this.ip = ip;
-		this.passwordProtected = passwordProtected;
-		this.mac = null;
-		this.clientToServer = null;
-		this.password = null;
+		this.name = name;
+		this.connectionPort = connectionPort;
+		this.cipher = null;
+		this.validationByte = validationByte;
 	}
 
 	/*GETTERS*/
-	public String getName () {
-		return this.name;
-	}
-
 	public InetAddress getAddress () {
 		return this.ip;
 	}
-
-	public MacAddress getMacAddress () {
-		return this.mac;
+	
+	public String getName () {
+		return this.name;
 	}
-
-	public String getPassword () {
-		return this.password;
+	
+	public int getConnectionPort() {
+		return this.connectionPort;
 	}
-
-	public boolean isPasswordProtected () {
-		return this.passwordProtected;
+	
+	public boolean isEncrypted () {
+		return this.validationByte != 0;
+	}
+	
+	public Cipher getCipher () {
+		return this.cipher;
 	}
 
 	public boolean isConnected () {
@@ -63,13 +67,26 @@ public class ServerModel implements Serializable {
 		}
 		return this.clientToServer.getPort();
 	}
+	
+	public UDPServer getFeedbackServer () {
+		return this.feedbackServer;
+	}
+	
+	public byte getValidationByte () {
+		return this.validationByte;
+	}
+	
+	/*SETTERS*/
+	public void setKey (byte[] key) {
+		this.cipher = new RC4Cipher(key);
+	}
 
 	/*METHODS*/
-	public void confirmConnection (MacAddress mac, int serverPort, String password) throws IOException {
+	public void confirmConnection (byte[] key, int serverPort) throws IOException {
 		if (this.clientToServer == null) {
-			this.mac = mac;
-			this.clientToServer = new UDPClient(serverPort, this.ip);
-			this.password = password;
+			if (this.cipher == null) this.setKey(key);
+			this.clientToServer = new UDPClient(serverPort, this.ip, this.cipher);
+			this.feedbackServer = new UDPServer(Constants.maxErrorMessage, this.cipher);
 		}
 
 	}

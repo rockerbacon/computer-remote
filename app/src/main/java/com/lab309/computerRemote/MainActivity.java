@@ -50,7 +50,6 @@ public class MainActivity extends AppCompatActivity {
 			intent.putExtra("server_name", server.getName());
 			intent.putExtra("server_address", server.getAddress().getAddress());
 			intent.putExtra("server_passwordProtected", server.isPasswordProtected());
-			intent.putExtra("sender_name", client.getName());
 
 			startActivity(intent);
 		}

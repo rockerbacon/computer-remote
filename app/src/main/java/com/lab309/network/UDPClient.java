@@ -2,6 +2,8 @@ package com.lab309.network;
 
 import java.io.IOException;
 
+import com.lab309.security.Cipher;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -17,13 +19,15 @@ public class UDPClient {
 		private int boundPort;
 		private InetAddress boundAddress;
 		private DatagramSocket sender;
+		private Cipher cipher;
 
 
 		/*CONSTRUCTOR*/
-		public UDPClient (int port, InetAddress address) throws IOException {
+		public UDPClient (int port, InetAddress address, Cipher cipher) throws IOException {
 			this.boundPort = port;
 			this.boundAddress = address;
 			this.sender = new DatagramSocket();
+			this.cipher = cipher;
 		}
 
 		/*GETTERS*/
@@ -33,10 +37,20 @@ public class UDPClient {
 		public int getPort () {
 			return this.boundPort;
 		}
+		
+		/*SETTERS*/
+		public void setCipher (Cipher cipher) {
+			this.cipher = cipher;
+		}
 
 		/*METHODS*/
 		public void send (UDPDatagram datagram) throws IOException {
-			this.sender.send( new DatagramPacket(datagram.buffer, datagram.offset, this.boundAddress, this.boundPort) );
+			if (this.cipher != null) {
+				byte[] message = this.cipher.encrypt(datagram.getBuffer().getByteArray());
+				this.sender.send( new DatagramPacket(message, message.length, this.boundAddress, this.boundPort) );
+			} else {
+				this.sender.send( new DatagramPacket(datagram.buffer, datagram.offset, this.boundAddress, this.boundPort) );
+			}	
 		}
 
 		public void close () {

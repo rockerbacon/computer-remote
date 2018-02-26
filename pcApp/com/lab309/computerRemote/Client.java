@@ -130,7 +130,7 @@ public class Client {
 		server.confirmConnection(cipher.getKey(), commandsPort);
 		
 		packet.getBuffer().pushString(Constants.finishConnectMessage);
-		packet.getBuffer().pushInt(this.feedbackServer.getPort());
+		packet.getBuffer().pushInt(server.getFeedbackServer().getPort());
 		packet.getBuffer().pushString(this.name);
 		client.send(packet);
 		
