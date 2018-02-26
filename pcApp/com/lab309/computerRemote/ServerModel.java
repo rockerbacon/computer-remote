@@ -4,6 +4,9 @@ import com.lab309.network.MacAddress;
 import com.lab309.network.UDPClient;
 import com.lab309.network.UDPDatagram;
 
+import com.lab309.security.RC4Cipher;
+import com.lab309.security.SHA256Hasher;
+
 import java.io.Serializable;
 
 import java.io.IOException;
@@ -18,21 +21,19 @@ public class ServerModel implements Serializable {
 	private InetAddress ip;
 	private String name;
 	private int connectionPort;
-	private boolean passwordProtected;
-	private RC4Cipher cipher;
+	private Cipher cipher;
+	private byte validationByte;
 	
 	private transient UDPClient clientToServer;
 	private transient UDPServer feedbackServer;
-	private String password;
 
 	/*CONSTRUCTORS*/
-	public ServerModel (InetAddress ip, String name, int connectionPort, boolean passwordProtected, byte[] publicKey) {
+	public ServerModel (InetAddress ip, String name, int connectionPort, byte validationByte) {
 		this.ip = ip;
 		this.name = name;
 		this.connectionPort = connectionPort;
-		this.passwordProtected = passwordProtected;
 		this.cipher = null;
-		if (publicKey != null) this.cipher = new RC4Cipher (publicKey);
+		this.validationByte = validationByte;
 	}
 
 	/*GETTERS*/
@@ -48,11 +49,11 @@ public class ServerModel implements Serializable {
 		return this.connectionPort;
 	}
 	
-	public boolean isPasswordProtected () {
-		return this.passwordProtected;
+	public boolean isEncrypted () {
+		return this.validationByte != 0;
 	}
 	
-	public RC4Cipher getCipher () {
+	public Cipher getCipher () {
 		return this.cipher;
 	}
 
@@ -74,13 +75,22 @@ public class ServerModel implements Serializable {
 	public int getFeedbackServer () {
 		return this.feedbackServer;
 	}
+	
+	public byte getValidationByte () {
+		return this.validationByte;
+	}
+	
+	/*SETTERS*/
+	public void setKey (byte[] key) {
+		this.cipher = new RC4Cipher(key);
+	}
 
 	/*METHODS*/
-	public void confirmConnection (int serverPort, String password) throws IOException {
+	public void confirmConnection (byte[] key, int serverPort) throws IOException {
 		if (this.clientToServer == null) {
+			if (this.cipher == null) this.setPassword(key);
 			this.clientToServer = new UDPClient(serverPort, this.ip, this.cipher);
 			this.feedbackServer = new UDPServer(Constants.maxErrorMessage, this.cipher);
-			this.password = password;
 		}
 
 	}

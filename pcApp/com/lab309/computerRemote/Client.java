@@ -6,6 +6,9 @@ import com.lab309.network.UDPClient;
 import com.lab309.network.UDPServer;
 import com.lab309.network.UDPDatagram;
 
+import com.lab309.security.RC4Cipher;
+import com.lab309.security.SHA256Hasher;
+
 import com.lab309.general.SizeConstants;
 
 import java.io.IOException;
@@ -37,7 +40,7 @@ public class Client {
 			throw new IOException("Could not connect to network");
 		}
 		this.availableServers = new ArrayList<ServerModel>();
-		this.connectedServers = new ArrayList<ServerModel>(5);
+		this.connectedServers = new ArrayList<ServerModel>(3);
 	}
 
 	/*GETTERS*/
@@ -72,8 +75,8 @@ public class Client {
 	/*METHODS*/
 	public void searchServers () throws IOException {
 		UDPClient client;
-		UDPServer server = new UDPServer (Constants.broadcastPort, Constants.maxName+SizeConstants.sizeOfInt+2*SizeConstants.sizeOfBoolean+Constants.publicKeySize, null);
-		UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Constants.helloMessage));
+		UDPServer server = new UDPServer (Constants.broadcastPort, SizeConstants.sizeOfString(Constants.helloMessage), null);
+		UDPDatagram packet;
 		ServerModel availableServer;
 		
 		packet.getBuffer().pushString(Constants.helloMessage);
@@ -89,12 +92,8 @@ public class Client {
 		while ( (packet = server.receiveOnTime(Constants.answerTimeLimit, Constants.wrongAnswerLimit)) != null) {
 			String name = packet.getBuffer().retrieveString();
 			int connectionPort = packet.getBuffer().retrieveInt();
-			boolean passProtected = packet.getBuffer().retrieveBoolean();
-			boolean encrypted = packet.getBuffer().retrieveBoolean();
-			byte[] publicKey = null;
-			if (encrypted) publicKey = packet.getBuffer().retrieveByteArray(Constants.publicKeySize, new byte[Constants.publicKeySize], 0);
-			
-			ServerModel availableServer = new ServerModel(packet.getSender(), name, connectionPort, passProtected, publicKey);
+			byte validationByte = packet.getBuffer().retrieveByte();
+			ServerModel availableServer = new ServerModel(packet.getSender(), name, connectionPort, validationByte);
 			
 			this.availableServers.add(availableServer);
 		}
@@ -103,65 +102,45 @@ public class Client {
 
 	/*
 	 *	Retorna:
-	 * 		UDPServer.STATUS_SUCCESSFUL se conexao foi estabelecida
-	 * 		UDPServer.STATUS_PACKET_NOT_EXPECTED se senha eh invalida
-	 *		UDPServer.STATUS_TIMEOUT se servidor nao respondeu
+	 * 		UDPServer.STATUS_SUCCESSFUL if the connection was established successfuly
+	 *		UDPServer.STATUS_TIMEOUT if server did not respond (possibly invalid password)
 	 *
 	 */
-	public static int connectToServer (ServerModel server, String password) throws IOException {
+	public static int connectToServer (ServerModel server, byte[] password) throws IOException {
+	
+		Cipher cipher = new RC4Cipher(new SHA256Hasher().hash(password));
+		UDPClient client = new UDPClient(server.getAddress(), server.getConnectionPort(), cipher);
+		UDPServer server = new UDPServer(SizeConstants.sizeOfString(Constants.connectMessage)+SizeConstants.sizeOfInt, cipher);
+		UDPDatagram packet = new UDPDatagram (SizeConstants.sizeOfString(Constants.finishConnectMessage)+Constants.maxName+SizeConstants.sizeOfInt);
+		byte[] connectMessage = ByteArrayConverter.stringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfString(Constants.connectMessage)], 0);
+		UDPDatagram received;
+		int commandsPort;
+		
+		packet.getBuffer().pushString(Constants.connectMessage);
+		packet.getBuffer().pushInt(server.getPort());
+		client.send(packet);
+		packet.rewind();
 
-		RC4Cipher cipher = server.getCipher();
-		UDPClient client = new UDPClient(server.getConnectionPort, server.getAddress, cipher);
-		UDPServer server = new UDPServer(SizeConstants.sizeOfInt, cipher);
-		UDPDatagram request = new UDPDatagram(SizeConstants.sizeOfString(Constants.finishConnectMessage)+SizeConstants.sizeOfInt+Constants.maxName);
-		UDPDatagram answer;
-		byte[] passHash = new SHA256Hasher().hash( ByteArrayConverter.stringToArray(password, new byte[SizeConstants.sizeOfString(password)], 0) );
-		int serverPort;
-
-		//send connection request
-		request.getBuffer().pushString(Constants.connectMessage);
-		request.getBuffer().pushInt(server.getPort());
-		request.getBuffer().pushByteArray(passHash);
-		client.send(request);
-
-		//receive connection port
-		answer = server.receiveOnTime(Constants.answerTimeLimit, Constants.wrongAnswerLimit);
-		server.close();
-		if (answer == null) {
-			client.close();
+		received = server.receiveExpectedOnTime(connectMessage, Constants.answerTimeLimit, Constants.wrongAnswerLimit);
+		if (received == null) {
 			return UDPServer.STATUS_TIMEOUT;
 		}
-
-		serverPort = answer.getBuffer().retrieveInt();
-		if (serverPort == -1) {
-			client.close();
-			return UDPServer.STATUS_PACKET_NOT_EXPECTED;
-		}
 		
-		//finish connection
-		server.confirmConnection(serverPort, password);
+		commandsPort = received.getBuffer().retrieveInt();
+		server.confirmConnection(cipher.getKey(), commandsPort);
 		
-		request.getBuffer().rewind();
-		request.getBuffer().pushString(Constants.finishConnectMessage);
-		request.getBuffer().pushInt(server.getFeedbackServer().getPort());
-		request.getBuffer().pushString(this.name);
-
-		/*
-		synchronized (this.availableServersLock) {
-			this.availableServers.remove(index);
-		}
-		*/
-		/*
-		synchronized (this.connectedServersLock) {
-			this.connectedServers.add(server);
-		}
-		*/
-
-		client.close();
+		packet.getBuffer().pushString(Constants.finishConnectMessage);
+		packet.getBuffer().pushInt(this.feedbackServer.getPort());
+		packet.getBuffer().pushString(this.name);
+		client.send(packet);
+		
+		this.connectedServers.add(server);
+		
 		return UDPServer.STATUS_SUCCESSFUL;
 
 	}
 
+	/*
 	public void checkConnections () throws IOException {
 		synchronized (this.connectedServersLock) {
 
@@ -196,15 +175,7 @@ public class Client {
 		}
 
 	}
-
-	private static UDPDatagram prepareCommandDatagram (ServerModel server, int commandDataSize) {
-		UDPDatagram command = new UDPDatagram (MacAddress.SIZE + SizeConstants.sizeOfString(Client.name) + SizeConstants.sizeOfInt + commandDataSize);
-
-		command.pushByteArray(server.getMacAddress().getAddress(), 0, server.getMacAddress().getAddress().length);
-		command.pushString(Client.name);
-
-		return command;
-	}
+	*/
 
 	public static void executeLine (final ServerModel server, final String line) {
 		new Thread (new Runnable () {

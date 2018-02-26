@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.util.LinkedList;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Random;
 
 import java.awt.Robot;
 
@@ -34,37 +35,7 @@ import java.net.SocketException;
  *  Server has an UDPServer connected to a random port available at the moment of the object's instantiation from where it receives connection messages.
  *	Server has an UDPServer connected to a random port available at the moment of the object's instantiation from where it receives commands to be executed.
  *	Server uses RC4 for security of messages and SHA-256 for storing the password
- *
- *  The visibility protocol goes as follows:
- *		1-Client broadcasts a packet through the broadcast port, having: (Constants.helloMessage)
- *
- *		2-Server sends a packet to the client's IP through the broadcast port, having:
- *			(String serverName, int connectionPort, boolean isPasswordProtected, boolean isEncrypted, byte[] publicKey)
- *			The publicKey will only be present in case isEncrypted = true
- *
- *		The visibility protocol is the only one that sends unencrypted messages regardless of the encrypted variable. All other communications with the server are encrypted.
- 
- *	The connection protocol goes as follows:
- *
- *		1-Client sends a packet to the server's IP through the connection port, having: (Constants.connectMessage, int answerPort, byte[] password)
- *			Password needs to be present only if the server has a password
- *
- *		2-Server sends a packet to the client's IP through the answer port, having: (int commandsPort)
- *			If the password was not accepted commandsPort will be -1
- *
- *		3-Client sends a packet to the server's IP through the connection port, having: (Constants.finishConnectMessage, int feedbackPort, String clientName), after which the connection is fully established
- *
- *		The server will send apackage to the client't IP through the feedback port every Constants.connectionCheckInterval milliseconds, having:
- *			(Constants.connectionCheckMessage, int answerPort, byte[] publicKey)
- *			After that the client must answer with a package to the server's IP through the answer port having (Constants.connectionCheckMessage)
- *			If the client does not answer within the default time limit the connection will be terminated
- *	
- *
- *
- *	The transmission of commands follows the protocol:
- *		3-Client sends packet throught the command port to the server's IP, having: (byte commandId, ... args)
- *			For the arguments of each type of command see class Steward
- *
+ *  A validation byte is used to ensure that the decryption of messages worked correctly. If a validation byte is wrong the wrong public key or cipher was used to encrypt the message
  *
  */
 public class Server {
@@ -79,13 +50,11 @@ public class Server {
 	}
 
 	/*ATTRIBUTES*/
-	private boolean encrypted;
-	private RC4Cipher cipher;
-	private byte[] publicKey;
+	private byte validationByte;
+	private Cipher cipher;
 	
 	private Steward steward;
 	
-	private byte[] password;
 	private String name;
 	
 	private UDPServer broadcastServer;
@@ -97,20 +66,27 @@ public class Server {
 	private Map<InetAddress, Connection> connections;
 	
 	/*CONSTRUCTORS*/
-	public Server (boolean encrypted) throws IOException {
-		this.encrypted = encrypted;
-		if (encrypted) {
-			this.cipher = new RC4Cipher();
-			this.publicKey = this.cipher.getKey();
+	public Server (byte validationByte, String name, byte[] password) throws IOException {
+		this.validationByte = validationByte;
+		if (validationByte != 0) {
+			if (password == null) {
+				Random rnd = new Random();
+				password = new byte[Constants.passwordSize];
+				rnd.nextBytes(password);
+			}
+			this.setPassword(password);
 		} else {
 			this.cipher = null;
 		}
 		
  		this.steward = new Steward();
  		
-		this.password = null;
-		this.name = InetAddress.getLocalHost().getHostName();
-		//System.out.println(this.name);	//debug
+ 		if (name == null) {
+			this.name = InetAddress.getLocalHost().getHostName();
+			//System.out.println(this.name);	//debug
+		} else {
+			this.name = name;
+		}
 
 		this.broadcastServer = new UDPServer(Constants.broadcastPort, Constants.broadcastBufferSize, null);
 		this.connectionServer = new UDPServer(Constants.connectionBufferSize, this.cipher);
@@ -135,13 +111,8 @@ public class Server {
 		this.name = name;
 	}
 	
-	public void setPassword (String password) {
-		if (password == null) {
-			this.password = null;
-		} else {
-			SHA256Hasher hasher = new SHA256Hasher();
-			this.password = hasher.hash(password.getBytes());
-		}
+	public void setPassword (byte[] password) {
+		this.cipher = new RC4Cipher(new SHA256Hasher().hash(password));
 	}
 
 	/*METHODS*/
@@ -149,23 +120,21 @@ public class Server {
 		try {
 			UDPDatagram received;
 			UDPClient client;
-			UDPDatagram packet = new UDPDatagram(Constants.maxName+SizeConstants.sizeOfInt+2*SizeConstants.sizeOfBoolean+Server.this.publicKey.length);
+			UDPDatagram packet = new UDPDatagram(Constants.maxName+SizeConstants.sizeOfInt+SizeConstants.sizeOfByte);
+			byte[] helloMsg = ByteArrayConverter.stringToArray(Constants.helloMessage, new byte[SizeConstants.sizeOfString(Constants.helloMessage)], 0);
 			
 			packet.getBuffer().pushString(Server.this.name);
 			packet.getBuffer().pushInt(Server.this.connectionServer.getPort());
-			packet.getBuffer().pushBoolean(Server.this.password != null);
-			packet.getBuffer().pushBoolean(Server.this.encrypted);
+			packet.getBuffer().pushByte(Server.this.validationByte);
 			
 			while (true) {
 				//wait for hello message
-				received = Server.this.broadcastServer.receiveExpected(Constants.helloMessage);
+				received = Server.this.broadcastServer.receiveExpected(helloMsg);
 				
 				//answer hello message
-				packet.getBuffer().pushByteArray(Server.this.publicKey);
 				client = new UDPClient (Constants.broadcastPort,received.getSender(), null);
 				client.send(packet);
 				client.close();
-				packet.getBuffer().rewind(Server.this.publicKey.length);
 			}
 		} catch (SocketException e) {
 			System.out.println (e.getMessage());
@@ -181,33 +150,24 @@ public class Server {
 		try {
 			UDPDatagram received;
 			UDPClient client;
-			UDPDatagram packet = new UDPDatagram(Constants.maxName+2*SizeConstants.sizeOfBoolean+Constants.publicKeySize);
-			byte[] password = new byte[32];
+			UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Constants.connectMessage)+SizeConstants.sizeOfInt);
 			byte[] connectMessage = ByteArrayConverter.stringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfString(Constants.connectMessage)], 0);
 			byte[] fconnectMessage = ByteArrayConverter.stringToArray(Constants.finishConnectMessage, new byte[SizeConstants.sizeOfString(Constants.finishConnectMessage)], 0);
 			Connection connection;
 			int answerPort;
 
+			packet.getBuffer().pushString(Constants.connectMessage);
+			packet.getBuffer().pushInt(Server.this.commandsServer.getPort());
 			while (true) {
 
 				//wait for connection message
 				received = Server.this.connectionServer.receiveExpected(connectMessage);
 				
 				answerPort = received.getBuffer().retrieveInt();
-				if (Server.this.password != null) {
-					received.getBuffer().retrieveByteArray(password.length, password, 0);
-				
-					if (Array.equals(password, Server.this.password)) {
-						port = Server.this.commandsPort.getPort();
-					} else {
-						port = -1;
-					}
-				}
 				
 				//answer connection message
 				client = new UDPClient (answerPort, received.getSender(), this.cipher);
 				
-				packet.getBuffer().pushInt(port);
 				client.send(packet);
 				client.close();
 				
@@ -233,6 +193,7 @@ public class Server {
 	}}).start();
 	}
 	
+	/*
 	private void checkConnections () { new Thread ( new Runnable () { public void run() {
 		try {
 			byte[] newKey = new byte[Constants.publicKeySize];
@@ -270,13 +231,16 @@ public class Server {
 		}
 	}}).start();
 	}
+	*/
 	
 	private void waitForCommands () { new Thread ( new Runnable () { public void run () {
 		try {
 			UDPDatagram received;
+			byte [] validationByte = new byte[1];
+			validationByte[0] = Server.this.validationByte;
 
 			while (true) {
-				received = Server.this.commandsServer.receive();
+				received = Server.this.commandsServer.receiveExpected(validationByte);
 				if (Server.this.connections.containsKey(received.getSender())) {
 					Server.this.commandQueue.push(received);
 				}

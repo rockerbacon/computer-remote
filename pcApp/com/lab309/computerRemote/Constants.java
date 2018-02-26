@@ -30,6 +30,7 @@ public class Constants {
 	
 	public static final int commandQueueSize = 10;
 	
+	public static final int passwordSize = 4;	//size of the password in bytes
 	public static final int publicKeySize = 32;	//size of the public key used in bytes
 
 	/*COMANDOS*/
