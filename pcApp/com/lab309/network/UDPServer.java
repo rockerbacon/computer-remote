@@ -77,7 +77,7 @@ public class UDPServer implements Serializable {
 	/*METHODS*/
 	public UDPDatagram receive () throws IOException {
 
-		byte[] data;
+		byte[] message;
 		
 		do {
 			this.receiver.receive(this.bufferPacket);
@@ -85,22 +85,22 @@ public class UDPServer implements Serializable {
 		
 		if (this.cipher != null) {
 			try {
-				data = this.cipher.decrypt(this.bufferPacket.getData());
+				message = this.cipher.encrypt(this.bufferPacket.getData(), 0, this.bufferPacket.getLength());
 			} catch (Exception e) {
 				e.printStackTrace();
 				return null;
 			}
 		} else {
-			data = this.bufferPacket.getData();
+			message = this.bufferPacket.getData();
 		}
 
-		return new UDPDatagram(new ByteBuffer(data), this.bufferPacket.getAddress(), this.bufferPacket.getPort());
+		return new UDPDatagram(new ByteBuffer(message), this.bufferPacket.getAddress(), this.bufferPacket.getPort());
 	}
 
 	//retorna null se nenhum datagrama foi recebido a tempo
 	public UDPDatagram receiveOnTime (int timeInMillis, int limitOfTries) throws IOException {
 
-		byte[] data;
+		byte[] message;
 		this.receiver.setSoTimeout(timeInMillis);
 
 		try {
@@ -122,16 +122,16 @@ public class UDPServer implements Serializable {
 		
 		if (this.cipher != null) {
 			try {
-				data = this.cipher.decrypt(this.bufferPacket.getData());
+				message = this.cipher.encrypt(this.bufferPacket.getData(), 0, this.bufferPacket.getLength());
 			} catch (Exception e) {
 				e.printStackTrace();
 				return null;
 			}
 		} else {
-			data = this.bufferPacket.getData();
+			message = this.bufferPacket.getData();
 		}
 		
-		return new UDPDatagram(new ByteBuffer(data), this.bufferPacket.getAddress(), this.bufferPacket.getPort());
+		return new UDPDatagram(new ByteBuffer(message), this.bufferPacket.getAddress(), this.bufferPacket.getPort());
 	}
 
 	public UDPDatagram receiveOnTime (int timeInMillis) throws IOException {
@@ -141,45 +141,49 @@ public class UDPServer implements Serializable {
 	//waits for a package with the first bytes matching "expected" to be received
 	//returns a datagram offseted to after the expected bytes
 	public UDPDatagram receiveExpected (byte[] expected) throws IOException {
-		byte[] data;
+		byte[] message;
 
 		do {
 			this.receiver.receive(this.bufferPacket);
+			//System.out.println ("Received " + this.bufferPacket.getLength() + "bytes packet from " + this.bufferPacket.getAddress().toString());	//debug
+			//System.out.println ("Contents before decryption:");	//debug
+			//System.out.println (ByteArrayConverter.toStringRepresentation(this.bufferPacket.getData()));	//debug
 			
 			if (this.cipher != null) {
 				try {
-					data = this.cipher.decrypt(this.bufferPacket.getData());
+					message = this.cipher.encrypt(this.bufferPacket.getData(), 0, this.bufferPacket.getLength());
+					//System.out.println ("Contents after decryption:");	//debug
+					//System.out.println (ByteArrayConverter.toStringRepresentation(message));	//debug
 				} catch (Exception e) {
 					e.printStackTrace();
-					data = null;
+					message = null;
 				}
 			} else {
-				data = this.bufferPacket.getData();
+				message = this.bufferPacket.getData();
 			}
 
-			if (data == null) {
+			//System.out.println();	//debug
+
+			if (message == null) {
 				continue;
 			}
 			
-			System.out.println ("Received packet from " + this.bufferPacket.getAddress().toString() + " containing:");	//debug
-			System.out.println (ByteArrayConverter.toStringRepresentation(data)+"\n");	//debug
-			
 
-			for (int i = 0; i < data.length && i < expected.length; i++) {
-				if (data[i] != expected[i]) {
-					data = null;
+			for (int i = 0; i < message.length && i < expected.length; i++) {
+				if (message[i] != expected[i]) {
+					message = null;
 					break;
 				}
 			}
 
-		} while ( data == null || this.boundAddress != null && !this.bufferPacket.getAddress().equals(this.boundAddress) );
+		} while ( message == null || this.boundAddress != null && !this.bufferPacket.getAddress().equals(this.boundAddress) );
 
-		return new UDPDatagram(new ByteBuffer(data, expected.length), this.bufferPacket.getAddress(), this.bufferPacket.getPort());
+		return new UDPDatagram(new ByteBuffer(message, expected.length), this.bufferPacket.getAddress(), this.bufferPacket.getPort());
 	}
 
 	//null se pacote esperado nao foi recebido
 	public UDPDatagram receiveExpectedOnTime (byte[] expected, int timeInMillis, int limitOfTries) throws IOException {
-		byte[] data;
+		byte[] message;
 
 		this.receiver.setSoTimeout(timeInMillis);
 
@@ -195,29 +199,29 @@ public class UDPServer implements Serializable {
 				
 				if (this.cipher != null) {
 					try {
-						data = this.cipher.decrypt(this.bufferPacket.getData());
+						message = this.cipher.encrypt(this.bufferPacket.getData(), 0, this.bufferPacket.getLength());
 					} catch (Exception e) {
 						e.printStackTrace();
-						data = null;
+						message = null;
 					}
 				} else {
-					data = this.bufferPacket.getData();
+					message = this.bufferPacket.getData();
 				}
 
-				if (data == null) {
+				if (message == null) {
 					continue;
 				}
 
-				for (int i = 0; i < data.length && i < expected.length; i++) {
-					if (data[i] != expected[i]) {
-						data = null;
+				for (int i = 0; i < message.length && i < expected.length; i++) {
+					if (message[i] != expected[i]) {
+						message = null;
 						break;
 					}
 				}
 
-			} while ( data == null || this.boundAddress != null && !this.bufferPacket.getAddress().equals(this.boundAddress) );
+			} while ( message == null || this.boundAddress != null && !this.bufferPacket.getAddress().equals(this.boundAddress) );
 
-			return new UDPDatagram(new ByteBuffer(data, expected.length), this.bufferPacket.getAddress(), this.bufferPacket.getPort());
+			return new UDPDatagram(new ByteBuffer(message, expected.length), this.bufferPacket.getAddress(), this.bufferPacket.getPort());
 
 		} catch (SocketTimeoutException e) {
 			return null;

@@ -80,6 +80,7 @@ public class Server {
 				rnd.nextBytes(password);
 			}
 			this.setPassword(password);
+			System.out.println("Key: "+ByteArrayConverter.toStringRepresentation(this.cipher.getKey()));	//debug
 		} else {
 			this.cipher = null;
 		}
@@ -130,8 +131,8 @@ public class Server {
 		try {
 			UDPDatagram received;
 			UDPClient client;
-			UDPDatagram packet = new UDPDatagram(Constants.maxName+SizeConstants.sizeOfInt+SizeConstants.sizeOfByte);
-			byte[] helloMsg = ByteArrayConverter.stringToArray(Constants.helloMessage, new byte[SizeConstants.sizeOfString(Constants.helloMessage)], 0);
+			UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Server.this.name)+SizeConstants.sizeOfInt+SizeConstants.sizeOfByte);
+			byte[] helloMsg = ByteArrayConverter.latinStringToArray(Constants.helloMessage, new byte[SizeConstants.sizeOfLatinString(Constants.helloMessage)], 0);
 			
 			packet.getBuffer().pushString(Server.this.name);
 			packet.getBuffer().pushInt(Server.this.connectionServer.getPort());
@@ -165,19 +166,19 @@ public class Server {
 		try {
 			UDPDatagram received;
 			UDPClient client;
-			UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Constants.connectMessage)+SizeConstants.sizeOfInt);
-			byte[] connectMessage = ByteArrayConverter.stringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfString(Constants.connectMessage)], 0);
-			byte[] fconnectMessage = ByteArrayConverter.stringToArray(Constants.finishConnectMessage, new byte[SizeConstants.sizeOfString(Constants.finishConnectMessage)], 0);
+			UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfLatinString(Constants.connectMessage)+SizeConstants.sizeOfInt);
+			byte[] connectMessage = ByteArrayConverter.latinStringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfLatinString(Constants.connectMessage)], 0);
+			byte[] fconnectMessage = ByteArrayConverter.latinStringToArray(Constants.finishConnectMessage, new byte[SizeConstants.sizeOfLatinString(Constants.finishConnectMessage)], 0);
 			Connection connection;
 			int answerPort;
 
-			packet.getBuffer().pushString(Constants.connectMessage);
+			packet.getBuffer().pushLatinString(Constants.connectMessage);
 			packet.getBuffer().pushInt(Server.this.commandsServer.getPort());
 			while (true) {
 
 				//wait for connection message
 				received = Server.this.connectionServer.receiveExpected(connectMessage);
-				System.out.println("Received connection request from " + received.getSender().toString());	//debug
+				//System.out.println("Received connection request from " + received.getSender().toString());	//debug
 				
 				answerPort = received.getBuffer().retrieveInt();
 				

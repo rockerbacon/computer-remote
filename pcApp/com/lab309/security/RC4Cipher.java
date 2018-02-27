@@ -9,24 +9,25 @@ import java.security.SecureRandom;
 
 import com.lab309.general.ByteArrayConverter;
 
+import javax.crypto.Cipher;
+
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.KeyGenerator;
-import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 public class RC4Cipher implements com.lab309.security.Cipher {
 	/*ATRIBUTES*/
 	private transient Cipher encryptor;
 	private transient Cipher decryptor;
-	private byte[] publicKey;
+	private byte[] key;
 	
 	/*CONSTRUCTORS*/
-	public RC4Cipher (byte[] publicKey) {
+	public RC4Cipher (byte[] key) {
 		try {
 			this.encryptor = Cipher.getInstance("RC4");
 			this.decryptor = Cipher.getInstance("RC4");
-			this.setKey(publicKey);
+			this.setKey(key);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -38,11 +39,11 @@ public class RC4Cipher implements com.lab309.security.Cipher {
 
 			this.encryptor = Cipher.getInstance("RC4");
 			this.decryptor = Cipher.getInstance("RC4");
-			this.publicKey = new byte[publicKeySize];
+			this.key = new byte[publicKeySize];
 
 			s = new SecureRandom();
-			s.nextBytes(this.publicKey);
-			this.setKey(this.publicKey);
+			s.nextBytes(this.key);
+			this.setKey(this.key);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -52,23 +53,17 @@ public class RC4Cipher implements com.lab309.security.Cipher {
 	/*GETTERS*/
 	@Override
 	public byte[] getKey () {
-		return ByteArrayConverter.copyArrayTo(this.publicKey, 0, this.publicKey.length, new byte[this.publicKey.length], 0);
+		return ByteArrayConverter.copyArrayTo(this.key, 0, this.key.length, new byte[this.key.length], 0);
 	}
 	
 	/*SETTERS*/
 	@Override
-	public void setKey (byte[] publicKey) throws InvalidKeyException {
-		try {
-			KeyGenerator keygen = KeyGenerator.getInstance("RC4");
-			if (this.publicKey != publicKey) {
-				this.publicKey = ByteArrayConverter.copyArrayTo(publicKey, 0, publicKey.length, new byte[publicKey.length], 0);
-			}
-			keygen.init(new SecureRandom(publicKey));
-			this.encryptor.init(Cipher.ENCRYPT_MODE, keygen.generateKey());
-			this.decryptor.init(Cipher.DECRYPT_MODE, keygen.generateKey());
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
+	public void setKey (byte[] key) throws InvalidKeyException {
+		if (this.key != key) {
+			this.key = ByteArrayConverter.copyArrayTo(key, 0, key.length, new byte[key.length], 0);
 		}
+		this.encryptor.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(this.key, "RC4"));
+		this.decryptor.init(Cipher.DECRYPT_MODE, new SecretKeySpec(this.key, "RC4"));
 	}
 	
 	/*METHODS*/
@@ -84,9 +79,26 @@ public class RC4Cipher implements com.lab309.security.Cipher {
 	}
 
 	@Override
+	public byte[] encrypt(byte[] data, int offset, int length) throws IllegalBlockSizeException {
+		try {
+			if (data == null) return null;
+			return this.encryptor.doFinal(data, offset, length);
+		} catch (BadPaddingException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	@Override
 	public byte[] decrypt(byte[] data) throws IllegalBlockSizeException, BadPaddingException {
 		if (data == null) return null;
 		return this.decryptor.doFinal(data);
+	}
+
+	@Override
+	public byte[] decrypt(byte[] data, int offset, int length) throws IllegalBlockSizeException, BadPaddingException {
+		if (data == null) return null;
+		return this.decryptor.doFinal(data, offset, length);
 	}
 
 	private void writeObject (ObjectOutputStream output) throws IOException {
@@ -98,7 +110,7 @@ public class RC4Cipher implements com.lab309.security.Cipher {
 		try {
 			this.encryptor = Cipher.getInstance("RC4");
 			this.decryptor = Cipher.getInstance("RC4");
-			this.setKey(this.publicKey);
+			this.setKey(this.key);
 		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException e) {
 			e.printStackTrace();
 		}

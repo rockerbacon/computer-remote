@@ -33,8 +33,8 @@ public class Client implements Serializable {
 	private LinkedList<InetAddress> broadcasters;
 	private ArrayList<ServerModel> availableServers;
 	private ArrayList<ServerModel> connectedServers;
-	private transient Object availableServersLock = new Object();
-	private transient Object connectedServersLock = new Object();
+	private transient Object availableServersLock;
+	private transient Object connectedServersLock;
 
 	/*CONSTRUCTORS*/
 	public Client (String name) throws IOException {
@@ -46,6 +46,8 @@ public class Client implements Serializable {
 		}
 		this.availableServers = new ArrayList<ServerModel>();
 		this.connectedServers = new ArrayList<ServerModel>(3);
+		this.availableServersLock = new Object();
+		this.connectedServersLock = new Object();
 	}
 
 	/*GETTERS*/
@@ -81,9 +83,9 @@ public class Client implements Serializable {
 	public void searchServers () throws IOException {
 		UDPClient client;
 		UDPServer server = new UDPServer (Constants.broadcastPort, Constants.maxName+SizeConstants.sizeOfInt+SizeConstants.sizeOfByte, null);
-		UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Constants.helloMessage));
+		UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfLatinString(Constants.helloMessage));
 		
-		packet.getBuffer().pushString(Constants.helloMessage);
+		packet.getBuffer().pushLatinString(Constants.helloMessage);
 		
 		//broadcast hello message
 		for (InetAddress addr : this.broadcasters) {
@@ -124,18 +126,19 @@ public class Client implements Serializable {
 		Cipher cipher;
 		if (password != null) {
 			cipher = new RC4Cipher(new SHA256Hasher().hash(password));
+			//System.out.println("Key: "+ByteArrayConverter.toStringRepresentation(cipher.getKey())+"\n");	//debug
 		} else {
 			cipher = null;
 		}
 
 		UDPClient client = new UDPClient(connection.getConnectionPort(), connection.getAddress(), cipher);
-		UDPServer server = new UDPServer(SizeConstants.sizeOfString(Constants.connectMessage)+SizeConstants.sizeOfInt, cipher);
-		UDPDatagram packet = new UDPDatagram (SizeConstants.sizeOfString(Constants.finishConnectMessage)+Constants.maxName+SizeConstants.sizeOfInt);
-		byte[] connectMessage = ByteArrayConverter.stringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfString(Constants.connectMessage)], 0);
+		UDPServer server = new UDPServer(SizeConstants.sizeOfLatinString(Constants.connectMessage)+SizeConstants.sizeOfInt, cipher);
+		UDPDatagram packet = new UDPDatagram (SizeConstants.sizeOfLatinString(Constants.finishConnectMessage)+SizeConstants.sizeOfString(this.name)+SizeConstants.sizeOfInt);
+		byte[] connectMessage = ByteArrayConverter.latinStringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfLatinString(Constants.connectMessage)], 0);
 		UDPDatagram received;
 		int commandsPort;
 		
-		packet.getBuffer().pushString(Constants.connectMessage);
+		packet.getBuffer().pushLatinString(Constants.connectMessage);
 		packet.getBuffer().pushInt(server.getPort());
 		try {
 			client.send(packet);
@@ -151,9 +154,13 @@ public class Client implements Serializable {
 		}
 		
 		commandsPort = received.getBuffer().retrieveInt();
-		connection.confirmConnection(cipher.getKey(), commandsPort);
+		if (cipher != null) {
+			connection.confirmConnection(cipher.getKey(), commandsPort);
+		} else {
+			connection.confirmConnection(null, commandsPort);
+		}
 		
-		packet.getBuffer().pushString(Constants.finishConnectMessage);
+		packet.getBuffer().pushLatinString(Constants.finishConnectMessage);
 		packet.getBuffer().pushInt(connection.getFeedbackServer().getPort());
 		packet.getBuffer().pushString(this.name);
 

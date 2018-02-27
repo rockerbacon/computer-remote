@@ -1,7 +1,6 @@
 package com.lab309.computerRemote;
 
 import android.content.Context;
-import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
@@ -32,8 +31,6 @@ public class ConnectActivity extends AppCompatActivity {
 		Intent intent = getIntent();
 
         final Client client = (Client)intent.getSerializableExtra("client");
-
-        Log.d("Number of servers:", " "+client.getAvailableServersCount());
         final ServerModel server = client.getAvailableServer(intent.getIntExtra("serverIndex", 0));
 
         if (!server.isEncrypted()) {
@@ -51,12 +48,10 @@ public class ConnectActivity extends AppCompatActivity {
                 sendButton.setOnClickListener(new View.OnClickListener() {
 
                     @Override
-                    public void onClick(View v) {
-						//Log.d("CLICKMALDITO", "CLIQUEI, PORRAAAAAAAAA");
-						new Thread(new Runnable() { @Override public void run () {
+                    public void onClick(View v){
+                        //Log.d("CLICKMALDITO", "CLIQUEI, PORRAAAAAAAAA");
+						new Thread ( new Runnable () { @Override public void run() {
 							try {
-								byte[] b = ByteArrayConverter.fromStringRepresentation(password.getText().toString());
-								//Log.d("Sending password", ByteArrayConverter.toStringRepresentation(b));
 								if (client.connectToServer(server, ByteArrayConverter.fromStringRepresentation(password.getText().toString())) == UDPServer.STATUS_SUCCESSFUL) {
 									Intent intent = new Intent(ConnectActivity.this, CommandsActivity.class);
 
@@ -65,16 +60,20 @@ public class ConnectActivity extends AppCompatActivity {
 									intent.putExtra("server_passwordProtected", server.isEncrypted());
 									startActivity(intent);
 								} else {
-									ConnectActivity.this.runOnUiThread( new Runnable () { @Override public void run() {
-										Context context = getApplicationContext();
-										Toast.makeText(context, "Invalid password", Toast.LENGTH_LONG).show();
-									}});
+									ConnectActivity.this.runOnUiThread(new Runnable() {
+										@Override
+										public void run() {
+											Context context = getApplicationContext();
+											Toast toast = Toast.makeText(context, context.getResources().getString(R.string.toast_invalidPassword), Toast.LENGTH_LONG);
+											toast.show();
+										}
+									});
 								}
 							} catch (IOException e) {
 								e.printStackTrace();
 							}
 						}}).start();
-					}
+                    }
                 });
 			}
 	}

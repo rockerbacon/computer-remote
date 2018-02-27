@@ -135,6 +135,7 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onStop () {
 		super.onStop();
+		/*
 		try {
 			ObjectOutputStream clientFile;
 
@@ -144,5 +145,6 @@ public class MainActivity extends AppCompatActivity {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		*/
 	}
 }

@@ -1,10 +1,10 @@
 <resources>
     <string name="app_name">Computer Remote</string>
-    <string name="file_client">file_client</string>
     <string name="text_noNetwork">Could not connect to network</string>
-    <string name="label_password">Digite a senha:</string>
-    <string name="label_sendCommands">Comandos:</string>
-    <string name="button_send">Enviar</string>
+    <string name="label_password">Type password:</string>
+    <string name="label_sendCommands">Commands:</string>
+    <string name="button_send">Send</string>
     <string name="button_cmd_left">LEFT</string>
     <string name="button_cmd_right">RIGHT</string>
+    <string name="toast_invalidPassword">Invalid password</string>
 </resources>

@@ -52,16 +52,21 @@ public class UDPClient implements Serializable {
 
 		/*METHODS*/
 		public void send (UDPDatagram datagram) throws IOException, IllegalBlockSizeException {
-			System.out.println ("Message before encryption:");	//debug
-			System.out.println (ByteArrayConverter.toStringRepresentation(datagram.getBuffer().getByteArray()));	//debug
+			byte[] message;
+			//System.out.println ("Message before encryption:");	//debug
+			//System.out.println (ByteArrayConverter.toStringRepresentation(datagram.getBuffer().getByteArray()));	//debug
 			if (this.cipher != null) {
-				byte[] message = this.cipher.encrypt(datagram.getBuffer().getByteArray());
-				System.out.println ("Message after encryption:");	//debug
-				System.out.println (ByteArrayConverter.toStringRepresentation(message)+"\n");	//debug
-				this.sender.send( new DatagramPacket(message, message.length, this.boundAddress, this.boundPort) );
+
+				message = this.cipher.encrypt(datagram.getBuffer().getByteArray(), 0, datagram.getBuffer().getOffset());
+				//System.out.println ("Message after encryption:");	//debug
+				//System.out.println (ByteArrayConverter.toStringRepresentation(message));	//debug
+
 			} else {
-				this.sender.send( new DatagramPacket(datagram.getBuffer().getByteArray(), datagram.getBuffer().getOffset(), this.boundAddress, this.boundPort) );
-			}	
+				message = datagram.getBuffer().getByteArray();
+			}
+
+			this.sender.send( new DatagramPacket(message, message.length, this.boundAddress, this.boundPort) );
+			//System.out.println();	//debug
 		}
 
 		public void close () {
