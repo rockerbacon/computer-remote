@@ -1,20 +1,23 @@
 package com.lab309.computerRemote;
 
-import com.lab309.network.MacAddress;
 import com.lab309.network.NetInfo;
 import com.lab309.network.UDPClient;
 import com.lab309.network.UDPServer;
 import com.lab309.network.UDPDatagram;
 
+import com.lab309.security.Cipher;
 import com.lab309.security.RC4Cipher;
 import com.lab309.security.SHA256Hasher;
 
 import com.lab309.general.SizeConstants;
+import com.lab309.general.ByteArrayConverter;
 
 import java.io.IOException;
 import java.util.LinkedList;
 import java.net.InetAddress;
 import java.util.ArrayList;
+
+import javax.crypto.IllegalBlockSizeException;
 
 /**
  * Created by Vitor Andrade dos Santos on 4/13/17.
@@ -23,7 +26,7 @@ import java.util.ArrayList;
 public class Client {
 
 	/*ATTRIBUTES*/
-	private static String name;
+	private String name;
 	private InetAddress ip;
 	private LinkedList<InetAddress> broadcasters;
 	private ArrayList<ServerModel> availableServers;
@@ -33,7 +36,7 @@ public class Client {
 
 	/*CONSTRUCTORS*/
 	public Client (String name) throws IOException {
-		Client.name = name;
+		this.name = name;
 		this.ip = NetInfo.thisMachineIpv4();
 		this.broadcasters = NetInfo.broadcastIp();
 		if (this.broadcasters.size() == 0 || this.ip == null) {
@@ -45,7 +48,7 @@ public class Client {
 
 	/*GETTERS*/
 	public String getName () {
-		return Client.name;
+		return this.name;
 	}
 
 	public int getAvailableServersCount () {
@@ -75,21 +78,28 @@ public class Client {
 	/*METHODS*/
 	public void searchServers () throws IOException {
 		UDPClient client;
-		UDPServer server = new UDPServer (Constants.broadcastPort, SizeConstants.sizeOfString(Constants.helloMessage), null);
-		UDPDatagram packet;
-		ServerModel availableServer;
+		UDPServer server = new UDPServer (Constants.broadcastPort, Constants.maxName+SizeConstants.sizeOfInt+SizeConstants.sizeOfByte, null);
+		UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Constants.helloMessage));
 		
 		packet.getBuffer().pushString(Constants.helloMessage);
 		
 		//broadcast hello message
 		for (InetAddress addr : this.broadcasters) {
 			client = new UDPClient(Constants.broadcastPort, addr, null);
-			client.send(packet);
+			try {
+				client.send(packet);
+			} catch (IllegalBlockSizeException e) {
+				e.printStackTrace();
+			}
+
 			client.close();
 		}
 		
 		//populate list of available servers
 		while ( (packet = server.receiveOnTime(Constants.answerTimeLimit, Constants.wrongAnswerLimit)) != null) {
+			if (this.ip.equals(packet.getSender())) {
+				continue;
+			}
 			String name = packet.getBuffer().retrieveString();
 			int connectionPort = packet.getBuffer().retrieveInt();
 			byte validationByte = packet.getBuffer().retrieveByte();
@@ -101,15 +111,16 @@ public class Client {
 	}
 
 	/*
-	 *	Retorna:
+	 *	Returns:
 	 * 		UDPServer.STATUS_SUCCESSFUL if the connection was established successfuly
+	 * 		UDPServer.STATUS_PACKET_NOT_EXPECTED if something went wrong with the encryption
 	 *		UDPServer.STATUS_TIMEOUT if server did not respond (possibly invalid password)
 	 *
 	 */
-	public static int connectToServer (ServerModel server, byte[] password) throws IOException {
+	public int connectToServer (ServerModel connection, byte[] password) throws IOException {
 	
 		Cipher cipher = new RC4Cipher(new SHA256Hasher().hash(password));
-		UDPClient client = new UDPClient(server.getAddress(), server.getConnectionPort(), cipher);
+		UDPClient client = new UDPClient(connection.getConnectionPort(), connection.getAddress(), cipher);
 		UDPServer server = new UDPServer(SizeConstants.sizeOfString(Constants.connectMessage)+SizeConstants.sizeOfInt, cipher);
 		UDPDatagram packet = new UDPDatagram (SizeConstants.sizeOfString(Constants.finishConnectMessage)+Constants.maxName+SizeConstants.sizeOfInt);
 		byte[] connectMessage = ByteArrayConverter.stringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfString(Constants.connectMessage)], 0);
@@ -118,8 +129,13 @@ public class Client {
 		
 		packet.getBuffer().pushString(Constants.connectMessage);
 		packet.getBuffer().pushInt(server.getPort());
-		client.send(packet);
-		packet.rewind();
+		try {
+			client.send(packet);
+		} catch (IllegalBlockSizeException e) {
+			e.printStackTrace();
+			return UDPServer.STATUS_PACKET_NOT_EXPECTED;
+		}
+		packet.getBuffer().rewind();
 
 		received = server.receiveExpectedOnTime(connectMessage, Constants.answerTimeLimit, Constants.wrongAnswerLimit);
 		if (received == null) {
@@ -127,14 +143,20 @@ public class Client {
 		}
 		
 		commandsPort = received.getBuffer().retrieveInt();
-		server.confirmConnection(cipher.getKey(), commandsPort);
+		connection.confirmConnection(cipher.getKey(), commandsPort);
 		
 		packet.getBuffer().pushString(Constants.finishConnectMessage);
-		packet.getBuffer().pushInt(server.getFeedbackServer().getPort());
+		packet.getBuffer().pushInt(connection.getFeedbackServer().getPort());
 		packet.getBuffer().pushString(this.name);
-		client.send(packet);
+
+		try {
+			client.send(packet);
+		} catch (IllegalBlockSizeException e) {
+			e.printStackTrace();
+			return UDPServer.STATUS_PACKET_NOT_EXPECTED;
+		}
 		
-		this.connectedServers.add(server);
+		this.connectedServers.add(connection);
 		
 		return UDPServer.STATUS_SUCCESSFUL;
 
@@ -177,6 +199,7 @@ public class Client {
 	}
 	*/
 
+	/*
 	public static void executeLine (final ServerModel server, final String line) {
 		new Thread (new Runnable () {
 			@Override
@@ -257,6 +280,7 @@ public class Client {
 			}
 		}).start();
 	}
+	*/
 
 	public void clearAvailableServers () {
 		synchronized (this.availableServersLock) {

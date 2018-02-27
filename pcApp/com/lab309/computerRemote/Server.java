@@ -7,6 +7,9 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.Random;
 
+import com.lab309.general.ByteArrayConverter;
+import com.lab309.general.SizeConstants;
+
 import java.awt.Robot;
 
 import com.lab309.network.UDPClient;
@@ -21,13 +24,13 @@ import com.lab309.steward.Steward;
 
 import com.lab309.security.SHA256Hasher;
 import com.lab309.security.RC4Cipher;
-
-import com.lab309.general.SizeConstants;
+import com.lab309.security.Cipher;
 
 import java.security.SecureRandom;
 
 import java.io.IOException;
 import java.net.SocketException;
+import javax.crypto.IllegalBlockSizeException;
 
 /*
  *	Class for managing connections and receiving commands (but not executing them).
@@ -53,15 +56,17 @@ public class Server {
 	private byte validationByte;
 	private Cipher cipher;
 	
-	private Steward steward;
-	
 	private String name;
+	private InetAddress ip;
 	
 	private UDPServer broadcastServer;
 	private UDPServer connectionServer;
 	private UDPServer commandsServer;
 	
 	private CommandsQueue commandQueue;
+	private Object signal;
+	
+	private Steward steward;
 	
 	private Map<InetAddress, Connection> connections;
 	
@@ -78,8 +83,6 @@ public class Server {
 		} else {
 			this.cipher = null;
 		}
-		
- 		this.steward = new Steward();
  		
  		if (name == null) {
 			this.name = InetAddress.getLocalHost().getHostName();
@@ -87,23 +90,30 @@ public class Server {
 		} else {
 			this.name = name;
 		}
+		this.ip = NetInfo.thisMachineIpv4();
 
 		this.broadcastServer = new UDPServer(Constants.broadcastPort, Constants.broadcastBufferSize, null);
 		this.connectionServer = new UDPServer(Constants.connectionBufferSize, this.cipher);
 		
 		this.commandsServer = new UDPServer (Constants.commandBufferSize, this.cipher);
-		this.commandQueue = new ConcurrentStaticQueue<UDPDatagram> (Constants.commandQueueSize);
+		this.commandQueue = new CommandsQueue (Constants.commandQueueSize);
 		this.signal = new Object();
+		
+		this.steward = new Steward(this.commandQueue);
 		
 		this.broadcastAvailability();
 		this.waitForConnections();
-		this.checkConnections();
+		//this.checkConnections();
 		this.waitForCommands();
 	}
 
 	/*GETTERS*/
 	public String getName() {
-		return name;
+		return this.name;
+	}
+	
+	public InetAddress getAddress() {
+		return this.ip;
 	}
 	
 	/*SETTERS*/
@@ -133,7 +143,11 @@ public class Server {
 				
 				//answer hello message
 				client = new UDPClient (Constants.broadcastPort,received.getSender(), null);
-				client.send(packet);
+				try {
+					client.send(packet);
+				} catch (IllegalBlockSizeException e) {
+					e.printStackTrace();
+				}
 				client.close();
 			}
 		} catch (SocketException e) {
@@ -166,9 +180,14 @@ public class Server {
 				answerPort = received.getBuffer().retrieveInt();
 				
 				//answer connection message
-				client = new UDPClient (answerPort, received.getSender(), this.cipher);
+				client = new UDPClient (answerPort, received.getSender(), Server.this.cipher);
 				
-				client.send(packet);
+				try {
+					client.send(packet);
+				} catch (IllegalBlockSizeException e) {
+					e.printStackTrace();
+					return;
+				}
 				client.close();
 				
 				//wait for final handshake
@@ -255,6 +274,7 @@ public class Server {
 
 	public void close () {
 		this.broadcastServer.close();
+		this.connectionServer.close();
 		this.commandsServer.close();
 	}
 

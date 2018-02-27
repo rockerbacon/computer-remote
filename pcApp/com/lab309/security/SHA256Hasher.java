@@ -1,18 +1,25 @@
 package com.lab309.security;
 
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
-public class SHA256Hasher {
+public class SHA256Hasher implements Hasher {
 	/*ATRIBUTES*/
 	private MessageDigest hasher;
 	
 	/*CONSTRUCTORS*/
 	public SHA256Hasher () {
-		this.hasher = MessageDigest.getInstance("SHA-256");
+		try {
+			this.hasher = MessageDigest.getInstance("SHA-256");
+		} catch (NoSuchAlgorithmException e) {
+			System.out.println("No SHA256 here");
+			e.printStackTrace();
+		}
 	}
 	
 	/*METHODS*/
-	byte[] hash (byte[] data) {
+	@Override
+	public byte[] hash (byte[] data) {
 		this.hasher.update(data);
 		return this.hasher.digest();
 	}	

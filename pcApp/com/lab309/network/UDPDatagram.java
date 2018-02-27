@@ -21,6 +21,10 @@ public class UDPDatagram {
 		this.buffer = buffer;
 	}
 
+	public UDPDatagram (int bufferSize) {
+		this.buffer = new ByteBuffer(bufferSize);
+	}
+
 	/*GETTERS*/
 	public InetAddress getSender() {
 		return this.sender;

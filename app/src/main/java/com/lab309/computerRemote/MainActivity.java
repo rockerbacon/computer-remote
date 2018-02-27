@@ -49,48 +49,16 @@ public class MainActivity extends AppCompatActivity {
 
 			intent.putExtra("server_name", server.getName());
 			intent.putExtra("server_address", server.getAddress().getAddress());
-			intent.putExtra("server_passwordProtected", server.isPasswordProtected());
+			intent.putExtra("server_passwordProtected", server.isEncrypted());
 
 			startActivity(intent);
 		}
 	};
 
-	private void recreateClient () {
-		new Thread (new Runnable() {
-			@Override
-			public void run() {
-				try {
-					if (MainActivity.this.client == null) {
-						MainActivity.this.client = new Client(Build.MODEL);
-					} else {
-						MainActivity.this.client = new Client(MainActivity.this.client.getName());
-					}
-					MainActivity.this.refreshAvailableServers();
-				} catch (IOException e) {
-					//signal no network
-					TextView textNoNetwork = (TextView) findViewById(R.id.textNoNetwork);
-					textNoNetwork.setVisibility(View.VISIBLE);
-					MainActivity.this.client = null;
-				}
-			}
-		}).start();
-	}
-
-	private void checkConnections () {
-		new Thread (new Runnable () {
-			@Override
-			public void run() {
-				try {
-					MainActivity.this.client.checkConnections();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}).start();
-	}
-
 	private void refreshAvailableServers () {
+		TextView textNoNetwork = (TextView)findViewById(R.id.textNoNetwork);
 		this.progressBar.setVisibility(View.VISIBLE);
+		textNoNetwork.setVisibility(View.INVISIBLE);
 		new Thread (new Runnable () {
 			@Override
 			public void run() {
@@ -100,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
 						ServerModel server;
 
 						MainActivity.this.client.clearAvailableServers();
-						MainActivity.this.client.requestIdentities();
+						MainActivity.this.client.searchServers();
 
 						MainActivity.this.listDisplay.clear();
 						for (int i = 0; i < MainActivity.this.client.getAvailableServersCount(); i++) {
@@ -109,8 +77,10 @@ public class MainActivity extends AppCompatActivity {
 						}
 
 						MainActivity.this.mainHandler.post(MainActivity.this.updateServerList);
+
+						MainActivity.this.progressBar.setVisibility(View.INVISIBLE);
 					} catch (IOException e) {
-						MainActivity.this.recreateClient();
+						e.printStackTrace();
 					}
 				}
 			}
@@ -145,18 +115,17 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onStart() {
 		super.onStart();
+
 		try {
-			ObjectInputStream clientFile;
-
-			clientFile = new ObjectInputStream( openFileInput(getResources().getString(R.string.file_client)) );
-			this.client = (Client)clientFile.readObject();
-
-			this.checkConnections();
+			this.client = new Client(Build.MODEL);
 			this.refreshAvailableServers();
-
-		} catch (IOException | ClassNotFoundException e) {
-			this.recreateClient();
+		} catch (IOException e) {
+			//signal no network
+			TextView textNoNetwork = (TextView) findViewById(R.id.textNoNetwork);
+			textNoNetwork.setVisibility(View.VISIBLE);
+			this.client = null;
 		}
+
 	}
 
 	@Override

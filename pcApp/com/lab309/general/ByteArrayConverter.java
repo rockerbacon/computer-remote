@@ -211,4 +211,46 @@ public abstract class ByteArrayConverter {
 		return output;
 	}
 
+	public static String toStringRepresentation (byte[] array) {
+		char[] rep = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+		StringBuilder str = new StringBuilder();
+		int	mask = 0x0F;
+		int c0, c1;
+
+		for (int i = 0; i < array.length; i++) {
+			c0 = mask & array[i] >> 4;
+			c1 = array[i] & mask;
+			str.append(rep[c0]);
+			str.append(rep[c1]);
+		}
+
+		return new String(str);
+	}
+
+	public static byte[] fromStringRepresentation (String str) {
+		byte[] value = new byte[str.length()/2];
+		int[] preString = new int[str.length()];
+		int i, c;
+
+		//prepare string for processing
+		str = str.toUpperCase();
+		for (i = 0; i < str.length(); i++) {
+			c = (int)str.charAt(i);
+			if (c < 65) {
+				preString[i] = c-48;
+			} else {
+				preString[i] = c-55;
+			}
+		}
+
+		//process string
+		for (i = 0; i < value.length; i++) {
+			c = i*2;
+			value[i] = (byte)(preString[c+1]);
+			value[i] |= (byte)(preString[c] << 4);
+		}
+
+		return value;
+	}
+
 }

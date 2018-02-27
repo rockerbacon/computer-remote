@@ -12,6 +12,8 @@ import java.io.Serializable;
 import java.io.IOException;
 import java.net.InetAddress;
 
+import javax.crypto.IllegalBlockSizeException;
+
 /**
  * Created by Vitor Andrade dos Santos on 4/13/17.
  */
@@ -91,7 +93,7 @@ public class ServerModel implements Serializable {
 
 	}
 
-	public void send (UDPDatagram datagram) throws IOException {
+	public void send (UDPDatagram datagram) throws IOException, IllegalBlockSizeException {
 		this.clientToServer.send(datagram);
 	}
 

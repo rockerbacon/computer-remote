@@ -1,16 +1,18 @@
 package com.lab309.computerRemote;
 
-import com.lab309.network.MacAddress;
 import com.lab309.network.UDPClient;
+import com.lab309.network.UDPServer;
 import com.lab309.network.UDPDatagram;
 
+import com.lab309.security.Cipher;
 import com.lab309.security.RC4Cipher;
-import com.lab309.security.SHA256Hasher;
 
 import java.io.Serializable;
 
 import java.io.IOException;
 import java.net.InetAddress;
+
+import javax.crypto.IllegalBlockSizeException;
 
 /**
  * Created by Vitor Andrade dos Santos on 4/13/17.
@@ -57,10 +59,6 @@ public class ServerModel implements Serializable {
 		return this.cipher;
 	}
 
-	public String getPassword () {
-		return this.password;
-	}
-
 	public boolean isConnected () {
 		return this.clientToServer != null;
 	}
@@ -72,7 +70,7 @@ public class ServerModel implements Serializable {
 		return this.clientToServer.getPort();
 	}
 	
-	public int getFeedbackServer () {
+	public UDPServer getFeedbackServer () {
 		return this.feedbackServer;
 	}
 	
@@ -88,14 +86,14 @@ public class ServerModel implements Serializable {
 	/*METHODS*/
 	public void confirmConnection (byte[] key, int serverPort) throws IOException {
 		if (this.clientToServer == null) {
-			if (this.cipher == null) this.setPassword(key);
+			if (this.cipher == null) this.setKey(key);
 			this.clientToServer = new UDPClient(serverPort, this.ip, this.cipher);
 			this.feedbackServer = new UDPServer(Constants.maxErrorMessage, this.cipher);
 		}
 
 	}
 
-	public void send (UDPDatagram datagram) throws IOException {
+	public void send (UDPDatagram datagram) throws IOException, IllegalBlockSizeException {
 		this.clientToServer.send(datagram);
 	}
 

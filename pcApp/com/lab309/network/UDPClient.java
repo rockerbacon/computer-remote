@@ -8,6 +8,8 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
+import javax.crypto.IllegalBlockSizeException;
+
 /**
  * Class for sending UDP packets
  *
@@ -44,12 +46,12 @@ public class UDPClient {
 		}
 
 		/*METHODS*/
-		public void send (UDPDatagram datagram) throws IOException {
+		public void send (UDPDatagram datagram) throws IOException, IllegalBlockSizeException {
 			if (this.cipher != null) {
 				byte[] message = this.cipher.encrypt(datagram.getBuffer().getByteArray());
 				this.sender.send( new DatagramPacket(message, message.length, this.boundAddress, this.boundPort) );
 			} else {
-				this.sender.send( new DatagramPacket(datagram.buffer, datagram.offset, this.boundAddress, this.boundPort) );
+				this.sender.send( new DatagramPacket(datagram.getBuffer().getByteArray(), datagram.getBuffer().getOffset(), this.boundAddress, this.boundPort) );
 			}	
 		}
 

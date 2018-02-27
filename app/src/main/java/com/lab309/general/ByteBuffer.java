@@ -27,6 +27,10 @@ public class ByteBuffer {
 	public byte[] getByteArray() {
 		return this.buffer;
 	}
+
+	public int getOffset () {
+		return this.offset;
+	}
 	
 	/*METHODS*/
 	/*PUSH DATA*/

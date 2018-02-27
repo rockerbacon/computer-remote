@@ -5,13 +5,11 @@
  *
  */
 
-package com.lab309.Steward;
+package com.lab309.steward;
 
 import com.lab309.adt.ConcurrentStaticQueue;
 
 import com.lab309.network.UDPDatagram;
-
-import java.net.SocketException;
 
 public class CommandsQueue {
 	/*ATRIBUTES*/
@@ -27,16 +25,16 @@ public class CommandsQueue {
 	
 	/*METHODS*/
 	//blocks until a command is available to be processed
-	public UDPDatagram pop () throws IllegalThreadStateException {
+	public UDPDatagram pop () throws IllegalThreadStateException, InterruptedException {
 		UDPDatagram next;
 		
 		next = this.queue.pop();
 		while (next == null) {
 			synchronized (this.popSignal) { this.popSignal.wait(); }
-			if (destroyed) throw new IllegalThreadStateException("Queue destroyed");
+			if (this.destroyed) throw new IllegalThreadStateException("Queue destroyed");
 			next = this.queue.pop();
 		}
-		return command;
+		return next;
 	}
 	
 	//throws an IndexOutOfBoundsException in case the queue was full and the command had to be discarded

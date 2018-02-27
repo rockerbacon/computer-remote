@@ -17,6 +17,8 @@ import java.util.LinkedList;
 import java.net.InetAddress;
 import java.util.ArrayList;
 
+import javax.crypto.IllegalBlockSizeException;
+
 /**
  * Created by Vitor Andrade dos Santos on 4/13/17.
  */
@@ -76,7 +78,7 @@ public class Client {
 	/*METHODS*/
 	public void searchServers () throws IOException {
 		UDPClient client;
-		UDPServer server = new UDPServer (Constants.broadcastPort, SizeConstants.sizeOfString(Constants.helloMessage), null);
+		UDPServer server = new UDPServer (Constants.broadcastPort, Constants.maxName+SizeConstants.sizeOfInt+SizeConstants.sizeOfByte, null);
 		UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Constants.helloMessage));
 		
 		packet.getBuffer().pushString(Constants.helloMessage);
@@ -84,12 +86,20 @@ public class Client {
 		//broadcast hello message
 		for (InetAddress addr : this.broadcasters) {
 			client = new UDPClient(Constants.broadcastPort, addr, null);
-			client.send(packet);
+			try {
+				client.send(packet);
+			} catch (IllegalBlockSizeException e) {
+				e.printStackTrace();
+			}
+
 			client.close();
 		}
 		
 		//populate list of available servers
 		while ( (packet = server.receiveOnTime(Constants.answerTimeLimit, Constants.wrongAnswerLimit)) != null) {
+			if (this.ip.equals(packet.getSender())) {
+				continue;
+			}
 			String name = packet.getBuffer().retrieveString();
 			int connectionPort = packet.getBuffer().retrieveInt();
 			byte validationByte = packet.getBuffer().retrieveByte();
@@ -101,8 +111,9 @@ public class Client {
 	}
 
 	/*
-	 *	Retorna:
+	 *	Returns:
 	 * 		UDPServer.STATUS_SUCCESSFUL if the connection was established successfuly
+	 * 		UDPServer.STATUS_PACKET_NOT_EXPECTED if something went wrong with the encryption
 	 *		UDPServer.STATUS_TIMEOUT if server did not respond (possibly invalid password)
 	 *
 	 */
@@ -118,7 +129,12 @@ public class Client {
 		
 		packet.getBuffer().pushString(Constants.connectMessage);
 		packet.getBuffer().pushInt(server.getPort());
-		client.send(packet);
+		try {
+			client.send(packet);
+		} catch (IllegalBlockSizeException e) {
+			e.printStackTrace();
+			return UDPServer.STATUS_PACKET_NOT_EXPECTED;
+		}
 		packet.getBuffer().rewind();
 
 		received = server.receiveExpectedOnTime(connectMessage, Constants.answerTimeLimit, Constants.wrongAnswerLimit);
@@ -132,7 +148,13 @@ public class Client {
 		packet.getBuffer().pushString(Constants.finishConnectMessage);
 		packet.getBuffer().pushInt(connection.getFeedbackServer().getPort());
 		packet.getBuffer().pushString(this.name);
-		client.send(packet);
+
+		try {
+			client.send(packet);
+		} catch (IllegalBlockSizeException e) {
+			e.printStackTrace();
+			return UDPServer.STATUS_PACKET_NOT_EXPECTED;
+		}
 		
 		this.connectedServers.add(connection);
 		

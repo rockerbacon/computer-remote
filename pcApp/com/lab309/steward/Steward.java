@@ -5,11 +5,12 @@
 
 package com.lab309.steward;
 
-import java.util.Map;
+import java.util.HashMap;
 
 import java.lang.Runnable;
 
 import java.awt.Robot;
+import java.awt.AWTException;
 
 import com.lab309.general.SizeConstants;
 import com.lab309.general.ByteBuffer;
@@ -31,7 +32,7 @@ public class Steward {
 	 *
 	 */
 	 public static final int writeLineCode = 0;
-	 public static WriteLine implements Command {
+	 public static class WriteLine implements Command {
 	 	private Runtime runtime;
 	 	
 	 	public WriteLine () {
@@ -43,6 +44,7 @@ public class Steward {
 	 		String line = buffer.retrieveString();
 	 		try {
 	 			this.runtime.exec(line);
+	 			return "command executed successfully";
 	 		} catch (IOException e) {
 	 			return "issued invalid command line \"" + line + "\""; 
 	 		}
@@ -54,7 +56,7 @@ public class Steward {
 	 *	See constants to know the event codes
 	 */
 	public static final int useKeyboardCode = 1;
-	public static UseKeyboard implements Command {
+	public static class UseKeyboard implements Command {
 		private Robot robot;
 		
 		//constants
@@ -63,13 +65,17 @@ public class Steward {
 		public static final byte click = 2;
 		
 		public UseKeyboard () {
-			this.robot = new Robot();
+			try {
+				this.robot = new Robot();
+			} catch (AWTException e) {
+				e.printStackTrace();
+			}
 		}
 		
 		@Override
 		public String execute (ByteBuffer buffer) {
 			int key = buffer.retrieveInt();
-			int event = buffer.retriveByte();
+			int event = buffer.retrieveByte();
 			String eventStr = " ";
 			switch (event) {
 				case press:
@@ -97,7 +103,7 @@ public class Steward {
 	/*ATRIBUTES*/
 	private CommandsQueue commands;
 	private boolean working;
-	private Map<int, Command> function;
+	private HashMap<Integer, Command> function;
 	
 	/*CONSTRUCTORS*/
 	//the command queue must be a reference to a queue that's being populated by a server
@@ -105,9 +111,9 @@ public class Steward {
 		this.commands = queue;
 		this.working = false;
 		
-		this.function = new Map<int, Command>();
+		this.function = new HashMap<Integer, Command>();
 		this.function.put(Steward.writeLineCode, new Steward.WriteLine());
-		this.function.put(Steward.useKeyboardCode, new Steward.UseKeybard());
+		this.function.put(Steward.useKeyboardCode, new Steward.UseKeyboard());
 	}
 	
 	/*GETTERS*/
@@ -139,10 +145,10 @@ public class Steward {
 					Steward.this.working = false;
 					//log steward stop	
 				} else {
-					result = Steward.this.function.get(code).execute(next);	//execute command
+					result = Steward.this.function.get(code).execute(command);	//execute command
 					//log result
 				}	
-			} catch (IllegalThreadStateException e) {
+			} catch (IllegalThreadStateException | InterruptedException e) {
 				Steward.this.working = false;
 			} catch (IndexOutOfBoundsException e) {
 				//this is an unwanted case where the network is extremely overloaded and the Stewards can't receive their correct kill packet
@@ -163,7 +169,7 @@ public class Steward {
 		killPacket.getBuffer().pushString("localhost");
 		killPacket.getBuffer().pushInt(Steward.stopWorkingCode);
 		try {
-			this.queue.push(killPacket);
+			this.commands.push(killPacket);
 		} catch (IndexOutOfBoundsException e) {
 			//will happen if queue is full in which case the Steward will be in the middle of processing packets and setting the variable will sufice as the thread won't be blocked for long
 			//This assumes the number of Stewards is not larger than the queue size. In the opposite case the queue may be full and Stewards may still be in a waiting state

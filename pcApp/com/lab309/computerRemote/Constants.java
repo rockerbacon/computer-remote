@@ -10,10 +10,10 @@ import com.lab309.general.ByteArrayConverter;
 public class Constants {
 	public static final int broadcastPort = 0x4343;	//representa a string "CC"
 
-	private static final String helloMessage = "CChello";
-	private static final String connectMessage = "CCConnect";
-	private static final String finishConnectMessage = "CCfconnect";
-	private static final String connectionCheckMessage = connectMessage;
+	public static final String helloMessage = "CChello";
+	public static final String connectMessage = "CCConnect";
+	public static final String finishConnectMessage = "CCfconnect";
+	public static final String connectionCheckMessage = connectMessage;
 	
 	public static final int answerTimeLimit = 500;
 	public static final int wrongAnswerLimit = 10;
@@ -26,7 +26,7 @@ public class Constants {
 	public static final int connectionBufferSize = SizeConstants.sizeOfString(connectMessage)+SizeConstants.sizeOfInt+Constants.maxName;
 	public static final int commandBufferSize = SizeConstants.sizeOfByte+maxCommandArgSize;
 	
-	public static final long int connectionCheckInterval = 5*60000;
+	public static final long connectionCheckInterval = 5*60000;
 	
 	public static final int commandQueueSize = 10;
 	

@@ -32,7 +32,7 @@ public class ConnectActivity extends AppCompatActivity {
         ServerModel serv = null;
 
         try {
-            serv = new ServerModel(intent.getStringExtra("server_name"), InetAddress.getByAddress(intent.getByteArrayExtra("server_address")), intent.getBooleanExtra("server_passwordProtected", false));
+            serv = new ServerModel(InetAddress.getByAddress(intent.getByteArrayExtra("server_address")), intent.getStringExtra("server_name"), intent.getIntExtra("server_connectionPort", -1), intent.getByteExtra("server_vb", (byte)0));
         } catch (UnknownHostException e) {
             Log.d("ERROR_SERVERMODEL","Erro ao criar ServerModel");
             e.printStackTrace();
@@ -40,14 +40,15 @@ public class ConnectActivity extends AppCompatActivity {
 
         final ServerModel server = serv;
 
-        if (!server.isPasswordProtected()) {
-
+        if (!server.isEncrypted()) {
+            /*
             try {
-                Client.connectToServer(server, "");
+                //Client.connectToServer(server, "");
             } catch (IOException e) {
                 Log.d("ERROR_CONNECTTOSERVER", "Erro ao conectar ao servidor");
                 e.printStackTrace();
             }
+            */
         } else {
 				//mostrar caixa de texto requisitando senha
                 password = (EditText) findViewById(R.id.txtPassword);
@@ -60,13 +61,13 @@ public class ConnectActivity extends AppCompatActivity {
                         Log.d("CLICKMALDITO", "CLIQUEI, PORRAAAAAAAAA");
                         try
                         {
-                            if( Client.connectToServer(server, password.getText().toString()) == UDPServer.STATUS_SUCCESSFUL )
+                            if( /*Client.connectToServer(server, password.getText().toString()) == UDPServer.STATUS_SUCCESSFUL*/ true )
                             {
                                 Intent intent = new Intent(ConnectActivity.this, CommandsActivity.class);
 
                                 intent.putExtra("server_name", server.getName());
                                 intent.putExtra("server_address", server.getAddress());
-                                intent.putExtra("server_passwordProtected", server.isPasswordProtected());
+                                intent.putExtra("server_passwordProtected", server.isEncrypted());
                                 Log.d("PASSOUUUU", "Passou no if");
                                 startActivity(intent);
                             }
@@ -78,7 +79,7 @@ public class ConnectActivity extends AppCompatActivity {
                                 toast.show();
                             }
                         }
-                        catch (IOException e)
+                        catch (Exception e)
                         {
                             e.printStackTrace();
                         }

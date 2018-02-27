@@ -5,27 +5,31 @@ public class ByteBuffer {
 	private int offset;
 	
 	/*CONSTRUCTORS*/
-	ByteBuffer (byte[] buffer, int offset) {
+	public ByteBuffer (byte[] buffer, int offset) {
 		this.buffer = buffer;
 		this.offset = offset;
 	}
 	
-	ByteBuffer (byte[] buffer) {
+	public ByteBuffer (byte[] buffer) {
 		this.buffer = buffer;
 		this.offset = 0;
 	}	
 	
-	ByteBuffer (int size) {
+	public ByteBuffer (int size) {
 		this(new byte[size]);
 	}
 	
 	/*GETTERS*/
 	public int getCapacity () {
-		return this.buffer.length();
+		return this.buffer.length;
 	}
 	
 	public byte[] getByteArray() {
 		return this.buffer;
+	}
+
+	public int getOffset () {
+		return this.offset;
 	}
 	
 	/*METHODS*/
