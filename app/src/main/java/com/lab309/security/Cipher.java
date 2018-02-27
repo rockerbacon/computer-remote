@@ -1,11 +1,12 @@
 package com.lab309.security;
 
+import java.io.Serializable;
 import java.security.InvalidKeyException;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 
-public interface Cipher {
+public interface Cipher extends Serializable {
 	public byte[] encrypt (byte[] data) throws IllegalBlockSizeException;
 	public byte[] decrypt (byte[] data) throws IllegalBlockSizeException, BadPaddingException;
 	public byte[] getKey ();

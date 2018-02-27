@@ -1,5 +1,7 @@
 package com.lab309.network;
 
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -7,18 +9,19 @@ import java.net.InetAddress;
 import com.lab309.general.ByteBuffer;
 import com.lab309.security.Cipher;
 
+import com.lab309.general.ByteArrayConverter;
+
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
+import java.io.Serializable;
 
 /**
  * Class for receiving UDP packets
  *
  * Created by Vitor Andrade dos Santos on 3/18/17.
  */
-public class UDPServer {
+public class UDPServer implements Serializable {
 
 	/*STATIC CONSTANTS*/
 	public static final int	STATUS_SUCCESSFUL = 0,
@@ -26,8 +29,8 @@ public class UDPServer {
 							STATUS_TIMEOUT = 2;
 
 	/*ATTRIBUTES*/
-	private DatagramSocket receiver;
-	private DatagramPacket bufferPacket;
+	private transient DatagramSocket receiver;
+	private transient DatagramPacket bufferPacket;
 	private InetAddress boundAddress;
 	private Cipher cipher;
 
@@ -63,6 +66,8 @@ public class UDPServer {
 	public int getLastSenderPort () {
 		return this.bufferPacket.getPort();
 	}
+
+	public int getBufferSize () { return this.bufferPacket.getData().length; }
 	
 	/*SETTERS*/
 	public void setCipher (Cipher cipher) {
@@ -155,6 +160,10 @@ public class UDPServer {
 			if (data == null) {
 				continue;
 			}
+			
+			System.out.println ("Received packet from " + this.bufferPacket.getAddress().toString() + " containing:");	//debug
+			System.out.println (ByteArrayConverter.toStringRepresentation(data)+"\n");	//debug
+			
 
 			for (int i = 0; i < data.length && i < expected.length; i++) {
 				if (data[i] != expected[i]) {
@@ -219,6 +228,21 @@ public class UDPServer {
 
 	public void close () {
 		this.receiver.close();
+	}
+
+
+	private void writeObject (ObjectOutputStream output) throws IOException {
+		output.defaultWriteObject();
+		output.writeInt(this.getPort());
+		output.writeInt(this.getBufferSize());
+	}
+
+	private void readObject (ObjectInputStream input) throws IOException, ClassNotFoundException {
+		int bufferSize;
+		input.defaultReadObject();
+		this.receiver = new DatagramSocket(input.readInt());
+		bufferSize = input.readInt();
+		this.bufferPacket = new DatagramPacket(new byte[bufferSize], bufferSize);
 	}
 
 }

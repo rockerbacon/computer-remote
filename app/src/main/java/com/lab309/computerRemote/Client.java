@@ -13,6 +13,8 @@ import com.lab309.general.SizeConstants;
 import com.lab309.general.ByteArrayConverter;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.util.LinkedList;
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -23,7 +25,7 @@ import javax.crypto.IllegalBlockSizeException;
  * Created by Vitor Andrade dos Santos on 4/13/17.
  */
 
-public class Client {
+public class Client implements Serializable {
 
 	/*ATTRIBUTES*/
 	private String name;
@@ -31,8 +33,8 @@ public class Client {
 	private LinkedList<InetAddress> broadcasters;
 	private ArrayList<ServerModel> availableServers;
 	private ArrayList<ServerModel> connectedServers;
-	private transient final Object availableServersLock = new Object();
-	private transient final Object connectedServersLock = new Object();
+	private transient Object availableServersLock = new Object();
+	private transient Object connectedServersLock = new Object();
 
 	/*CONSTRUCTORS*/
 	public Client (String name) throws IOException {
@@ -119,7 +121,13 @@ public class Client {
 	 */
 	public int connectToServer (ServerModel connection, byte[] password) throws IOException {
 	
-		Cipher cipher = new RC4Cipher(new SHA256Hasher().hash(password));
+		Cipher cipher;
+		if (password != null) {
+			cipher = new RC4Cipher(new SHA256Hasher().hash(password));
+		} else {
+			cipher = null;
+		}
+
 		UDPClient client = new UDPClient(connection.getConnectionPort(), connection.getAddress(), cipher);
 		UDPServer server = new UDPServer(SizeConstants.sizeOfString(Constants.connectMessage)+SizeConstants.sizeOfInt, cipher);
 		UDPDatagram packet = new UDPDatagram (SizeConstants.sizeOfString(Constants.finishConnectMessage)+Constants.maxName+SizeConstants.sizeOfInt);
@@ -302,5 +310,11 @@ public class Client {
 			this.connectedServers.get(index).disconnect();
 			this.connectedServers.remove(index);
 		}
+	}
+
+	private void readObject (ObjectInputStream input) throws IOException, ClassNotFoundException {
+		input.defaultReadObject();
+		this.availableServersLock = new Object();
+		this.connectedServersLock = new Object();
 	}
 }

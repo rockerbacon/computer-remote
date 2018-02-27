@@ -12,6 +12,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.lab309.computerRemote.R;
+import com.lab309.general.ByteArrayConverter;
 import com.lab309.network.UDPServer;
 
 import java.io.IOException;
@@ -29,26 +30,16 @@ public class ConnectActivity extends AppCompatActivity {
 
 		Intent intent = getIntent();
 
-        ServerModel serv = null;
-
-        try {
-            serv = new ServerModel(InetAddress.getByAddress(intent.getByteArrayExtra("server_address")), intent.getStringExtra("server_name"), intent.getIntExtra("server_connectionPort", -1), intent.getByteExtra("server_vb", (byte)0));
-        } catch (UnknownHostException e) {
-            Log.d("ERROR_SERVERMODEL","Erro ao criar ServerModel");
-            e.printStackTrace();
-        }
-
-        final ServerModel server = serv;
+        final Client client = (Client)intent.getSerializableExtra("client");
+        final ServerModel server = client.getAvailableServer(intent.getIntExtra("serverIndex", 0));
 
         if (!server.isEncrypted()) {
-            /*
             try {
-                //Client.connectToServer(server, "");
+                client.connectToServer(server, null);
             } catch (IOException e) {
                 Log.d("ERROR_CONNECTTOSERVER", "Erro ao conectar ao servidor");
                 e.printStackTrace();
             }
-            */
         } else {
 				//mostrar caixa de texto requisitando senha
                 password = (EditText) findViewById(R.id.txtPassword);
@@ -58,10 +49,10 @@ public class ConnectActivity extends AppCompatActivity {
 
                     @Override
                     public void onClick(View v){
-                        Log.d("CLICKMALDITO", "CLIQUEI, PORRAAAAAAAAA");
+                        //Log.d("CLICKMALDITO", "CLIQUEI, PORRAAAAAAAAA");
                         try
                         {
-                            if( /*Client.connectToServer(server, password.getText().toString()) == UDPServer.STATUS_SUCCESSFUL*/ true )
+                            if(client.connectToServer(server, ByteArrayConverter.fromStringRepresentation(password.getText().toString())) == UDPServer.STATUS_SUCCESSFUL)
                             {
                                 Intent intent = new Intent(ConnectActivity.this, CommandsActivity.class);
 

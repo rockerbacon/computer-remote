@@ -143,6 +143,7 @@ public class Server {
 				
 				//answer hello message
 				client = new UDPClient (Constants.broadcastPort,received.getSender(), null);
+				System.out.println("Received availability request from " + received.getSender().toString());	//debug
 				try {
 					client.send(packet);
 				} catch (IllegalBlockSizeException e) {
@@ -176,6 +177,7 @@ public class Server {
 
 				//wait for connection message
 				received = Server.this.connectionServer.receiveExpected(connectMessage);
+				System.out.println("Received connection request from " + received.getSender().toString());	//debug
 				
 				answerPort = received.getBuffer().retrieveInt();
 				

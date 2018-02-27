@@ -4,6 +4,9 @@ import java.io.IOException;
 
 import com.lab309.security.Cipher;
 
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -15,12 +18,12 @@ import javax.crypto.IllegalBlockSizeException;
  *
  * Created by Vitor Andrade dos Santos on 3/27/17.
  */
-public class UDPClient {
+public class UDPClient implements Serializable {
 
 		/*ATTRIBUTES*/
 		private int boundPort;
 		private InetAddress boundAddress;
-		private DatagramSocket sender;
+		private transient DatagramSocket sender;
 		private Cipher cipher;
 
 
@@ -57,5 +60,14 @@ public class UDPClient {
 
 		public void close () {
 			this.sender.close();
+		}
+
+		private void writeObject (ObjectOutputStream output) throws IOException {
+			output.defaultWriteObject();
+		}
+
+		private void readObject (ObjectInputStream input) throws IOException, ClassNotFoundException {
+			input.defaultReadObject();
+			this.sender = new DatagramSocket();
 		}
 }

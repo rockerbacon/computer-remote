@@ -44,12 +44,16 @@ public class MainActivity extends AppCompatActivity {
 	private AdapterView.OnItemClickListener connectionClick = new AdapterView.OnItemClickListener() {
 		@Override
 		public void onItemClick (AdapterView<?> l, View v, int position, long id) {
-			ServerModel server = MainActivity.this.client.getAvailableServer(position);
 			Intent intent = new Intent(MainActivity.this, ConnectActivity.class);
 
+			intent.putExtra("client", MainActivity.this.client);
+			intent.putExtra("serverIndex", position);
+
+			/*
 			intent.putExtra("server_name", server.getName());
 			intent.putExtra("server_address", server.getAddress().getAddress());
 			intent.putExtra("server_passwordProtected", server.isEncrypted());
+			*/
 
 			startActivity(intent);
 		}

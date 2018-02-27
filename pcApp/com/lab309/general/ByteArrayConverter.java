@@ -7,6 +7,9 @@ package com.lab309.general;
  */
 
 public abstract class ByteArrayConverter {
+
+	public static final char[] hexRep = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+
 	/*METHODS*/
 	//TO ARRAY
 	public static byte[] shortToArray (short hd, byte[] array, int offset) {
@@ -212,16 +215,17 @@ public abstract class ByteArrayConverter {
 	}
 
 	public static String toStringRepresentation (byte[] array) {
-		char[] rep = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 		StringBuilder str = new StringBuilder();
 		int	mask = 0x0F;
-		int c0, c1;
+		int c0, c1, asInt;
 
 		for (int i = 0; i < array.length; i++) {
-			c0 = mask & array[i] >> 4;
-			c1 = array[i] & mask;
-			str.append(rep[c0]);
-			str.append(rep[c1]);
+			asInt = 0xFF & array[i];
+			c0 = asInt >> 4;
+			c1 = asInt & mask;
+			//System.out.printf("%x, %x, %x\n", array[i], c0, c1);	//debug
+			str.append(ByteArrayConverter.hexRep[c0]);
+			str.append(ByteArrayConverter.hexRep[c1]);
 		}
 
 		return new String(str);
@@ -236,10 +240,10 @@ public abstract class ByteArrayConverter {
 		str = str.toUpperCase();
 		for (i = 0; i < str.length(); i++) {
 			c = (int)str.charAt(i);
-			if (c < 65) {
-				preString[i] = c-48;
+			if (c < ByteArrayConverter.hexRep[10]) {
+				preString[i] = c-ByteArrayConverter.hexRep[0];
 			} else {
-				preString[i] = c-55;
+				preString[i] = c-ByteArrayConverter.hexRep[10]+10;
 			}
 		}
 

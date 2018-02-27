@@ -13,6 +13,7 @@ import com.lab309.general.SizeConstants;
 import com.lab309.general.ByteArrayConverter;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.LinkedList;
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -23,7 +24,7 @@ import javax.crypto.IllegalBlockSizeException;
  * Created by Vitor Andrade dos Santos on 4/13/17.
  */
 
-public class Client {
+public class Client implements Serializable {
 
 	/*ATTRIBUTES*/
 	private String name;
@@ -119,7 +120,13 @@ public class Client {
 	 */
 	public int connectToServer (ServerModel connection, byte[] password) throws IOException {
 	
-		Cipher cipher = new RC4Cipher(new SHA256Hasher().hash(password));
+		Cipher cipher;
+		if (password != null) {
+			cipher = new RC4Cipher(new SHA256Hasher().hash(password));
+		} else {
+			cipher = null;
+		}
+
 		UDPClient client = new UDPClient(connection.getConnectionPort(), connection.getAddress(), cipher);
 		UDPServer server = new UDPServer(SizeConstants.sizeOfString(Constants.connectMessage)+SizeConstants.sizeOfInt, cipher);
 		UDPDatagram packet = new UDPDatagram (SizeConstants.sizeOfString(Constants.finishConnectMessage)+Constants.maxName+SizeConstants.sizeOfInt);

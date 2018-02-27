@@ -1,5 +1,8 @@
 package com.lab309.security;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -10,11 +13,12 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
 
 public class RC4Cipher implements com.lab309.security.Cipher {
 	/*ATRIBUTES*/
-	private Cipher encryptor;
-	private Cipher decryptor;
+	private transient Cipher encryptor;
+	private transient Cipher decryptor;
 	private byte[] publicKey;
 	
 	/*CONSTRUCTORS*/
@@ -46,16 +50,18 @@ public class RC4Cipher implements com.lab309.security.Cipher {
 	}
 	
 	/*GETTERS*/
+	@Override
 	public byte[] getKey () {
 		return ByteArrayConverter.copyArrayTo(this.publicKey, 0, this.publicKey.length, new byte[this.publicKey.length], 0);
 	}
 	
 	/*SETTERS*/
+	@Override
 	public void setKey (byte[] publicKey) throws InvalidKeyException {
 		try {
 			KeyGenerator keygen = KeyGenerator.getInstance("RC4");
 			if (this.publicKey != publicKey) {
-				ByteArrayConverter.copyArrayTo(publicKey, 0, publicKey.length, this.publicKey, 0);
+				this.publicKey = ByteArrayConverter.copyArrayTo(publicKey, 0, publicKey.length, new byte[publicKey.length], 0);
 			}
 			keygen.init(new SecureRandom(publicKey));
 			this.encryptor.init(Cipher.ENCRYPT_MODE, keygen.generateKey());
@@ -81,5 +87,20 @@ public class RC4Cipher implements com.lab309.security.Cipher {
 	public byte[] decrypt(byte[] data) throws IllegalBlockSizeException, BadPaddingException {
 		if (data == null) return null;
 		return this.decryptor.doFinal(data);
+	}
+
+	private void writeObject (ObjectOutputStream output) throws IOException {
+		output.defaultWriteObject();
+	}
+
+	private void readObject (ObjectInputStream input) throws IOException, ClassNotFoundException {
+		input.defaultReadObject();
+		try {
+			this.encryptor = Cipher.getInstance("RC4");
+			this.decryptor = Cipher.getInstance("RC4");
+			this.setKey(this.publicKey);
+		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException e) {
+			e.printStackTrace();
+		}
 	}
 }

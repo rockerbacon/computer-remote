@@ -12,7 +12,6 @@ public class SHA256Hasher implements Hasher {
 		try {
 			this.hasher = MessageDigest.getInstance("SHA-256");
 		} catch (NoSuchAlgorithmException e) {
-			System.out.println("No SHA256 here");
 			e.printStackTrace();
 		}
 	}

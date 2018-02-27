@@ -23,19 +23,20 @@ public class ServerModel implements Serializable {
 	private InetAddress ip;
 	private String name;
 	private int connectionPort;
-	private Cipher cipher;
 	private byte validationByte;
+
+	private Cipher cipher;
 	
-	private transient UDPClient clientToServer;
-	private transient UDPServer feedbackServer;
+	private UDPClient clientToServer;
+	private UDPServer feedbackServer;
 
 	/*CONSTRUCTORS*/
 	public ServerModel (InetAddress ip, String name, int connectionPort, byte validationByte) {
 		this.ip = ip;
 		this.name = name;
 		this.connectionPort = connectionPort;
-		this.cipher = null;
 		this.validationByte = validationByte;
+		this.cipher = null;
 	}
 
 	/*GETTERS*/

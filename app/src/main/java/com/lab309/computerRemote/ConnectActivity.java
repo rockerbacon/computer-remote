@@ -1,6 +1,7 @@
 package com.lab309.computerRemote;
 
 import android.content.Context;
+import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
@@ -12,6 +13,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.lab309.computerRemote.R;
+import com.lab309.general.ByteArrayConverter;
 import com.lab309.network.UDPServer;
 
 import java.io.IOException;
@@ -29,26 +31,18 @@ public class ConnectActivity extends AppCompatActivity {
 
 		Intent intent = getIntent();
 
-        ServerModel serv = null;
+        final Client client = (Client)intent.getSerializableExtra("client");
 
-        try {
-            serv = new ServerModel(InetAddress.getByAddress(intent.getByteArrayExtra("server_address")), intent.getStringExtra("server_name"), intent.getIntExtra("server_connectionPort", -1), intent.getByteExtra("server_vb", (byte)0));
-        } catch (UnknownHostException e) {
-            Log.d("ERROR_SERVERMODEL","Erro ao criar ServerModel");
-            e.printStackTrace();
-        }
-
-        final ServerModel server = serv;
+        Log.d("Number of servers:", " "+client.getAvailableServersCount());
+        final ServerModel server = client.getAvailableServer(intent.getIntExtra("serverIndex", 0));
 
         if (!server.isEncrypted()) {
-            /*
             try {
-                //Client.connectToServer(server, "");
+                client.connectToServer(server, null);
             } catch (IOException e) {
                 Log.d("ERROR_CONNECTTOSERVER", "Erro ao conectar ao servidor");
                 e.printStackTrace();
             }
-            */
         } else {
 				//mostrar caixa de texto requisitando senha
                 password = (EditText) findViewById(R.id.txtPassword);
@@ -57,33 +51,30 @@ public class ConnectActivity extends AppCompatActivity {
                 sendButton.setOnClickListener(new View.OnClickListener() {
 
                     @Override
-                    public void onClick(View v){
-                        Log.d("CLICKMALDITO", "CLIQUEI, PORRAAAAAAAAA");
-                        try
-                        {
-                            if( /*Client.connectToServer(server, password.getText().toString()) == UDPServer.STATUS_SUCCESSFUL*/ true )
-                            {
-                                Intent intent = new Intent(ConnectActivity.this, CommandsActivity.class);
+                    public void onClick(View v) {
+						//Log.d("CLICKMALDITO", "CLIQUEI, PORRAAAAAAAAA");
+						new Thread(new Runnable() { @Override public void run () {
+							try {
+								byte[] b = ByteArrayConverter.fromStringRepresentation(password.getText().toString());
+								//Log.d("Sending password", ByteArrayConverter.toStringRepresentation(b));
+								if (client.connectToServer(server, ByteArrayConverter.fromStringRepresentation(password.getText().toString())) == UDPServer.STATUS_SUCCESSFUL) {
+									Intent intent = new Intent(ConnectActivity.this, CommandsActivity.class);
 
-                                intent.putExtra("server_name", server.getName());
-                                intent.putExtra("server_address", server.getAddress());
-                                intent.putExtra("server_passwordProtected", server.isEncrypted());
-                                Log.d("PASSOUUUU", "Passou no if");
-                                startActivity(intent);
-                            }
-                            else
-                            {
-                                Log.d("PASSOUUUUNAAAAO", "Passou no ELSE");
-                                Context context = getApplicationContext();
-                                Toast toast = Toast.makeText(context, "Senha inválida. Tente novamente.", Toast.LENGTH_LONG);
-                                toast.show();
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            e.printStackTrace();
-                        }
-                    }
+									intent.putExtra("server_name", server.getName());
+									intent.putExtra("server_address", server.getAddress());
+									intent.putExtra("server_passwordProtected", server.isEncrypted());
+									startActivity(intent);
+								} else {
+									ConnectActivity.this.runOnUiThread( new Runnable () { @Override public void run() {
+										Context context = getApplicationContext();
+										Toast.makeText(context, "Invalid password", Toast.LENGTH_LONG).show();
+									}});
+								}
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}}).start();
+					}
                 });
 			}
 	}
