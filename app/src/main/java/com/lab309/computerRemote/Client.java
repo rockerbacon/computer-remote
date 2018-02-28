@@ -82,7 +82,7 @@ public class Client implements Serializable {
 	/*METHODS*/
 	public void searchServers () throws IOException {
 		UDPClient client;
-		UDPServer server = new UDPServer (Constants.broadcastPort, Constants.maxName+SizeConstants.sizeOfInt+SizeConstants.sizeOfByte, null);
+		UDPServer server = new UDPServer (Constants.broadcastPort, Constants.maxName+SizeConstants.sizeOfInt+Constants.validationBytesSize, null);
 		UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfLatinString(Constants.helloMessage));
 		
 		packet.getBuffer().pushLatinString(Constants.helloMessage);
@@ -106,8 +106,8 @@ public class Client implements Serializable {
 			}
 			String name = packet.getBuffer().retrieveString();
 			int connectionPort = packet.getBuffer().retrieveInt();
-			byte validationByte = packet.getBuffer().retrieveByte();
-			ServerModel availableServer = new ServerModel(packet.getSender(), name, connectionPort, validationByte);
+			byte[] validationBytes = packet.getBuffer().retrieveByteArray(new byte[Constants.validationBytesSize], 0, Constants.validationBytesSize);
+			ServerModel availableServer = new ServerModel(packet.getSender(), name, connectionPort, validationBytes);
 			
 			this.availableServers.add(availableServer);
 		}

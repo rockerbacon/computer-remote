@@ -3,8 +3,6 @@ package com.lab309.computerRemote;
 import java.util.Scanner;
 import java.util.Random;
 
-import java.security.SecureRandom;
-
 import com.lab309.general.ByteArrayConverter;
 
 public class Main {
@@ -13,14 +11,10 @@ public class Main {
 
 			Scanner wait = new Scanner(System.in);
 			
-			SecureRandom rnd = new SecureRandom();
+			byte[] password = Server.randomByteArray(Constants.passwordSize);
+			byte[] vb = Server.randomByteArray(Constants.validationBytesSize);
 			
-			byte[] password = new byte[3];
-			byte vb = (byte)(new Random().nextInt());
-			
-			rnd.nextBytes(password);
-			
-			Server server = new Server(vb, null, password);
+			Server server = new Server(null, password);
 
 			System.out.println("Server: " + server.getName() + " @ " + server.getAddress().getHostAddress());
 			System.out.println("Password: " + ByteArrayConverter.toStringRepresentation(password));

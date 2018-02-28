@@ -165,7 +165,7 @@ public class ByteBuffer {
 		return string;
 	}
 
-	public byte[] retrieveByteArray (int size, byte[] output, int outputOffset) {
+	public byte[] retrieveByteArray (byte[] output, int outputOffset, int size) {
 		ByteArrayConverter.copyArrayTo(this.buffer, this.offset, this.offset+size, output, outputOffset);
 		this.offset += (size > 0) ? size : 0;
 		return output;

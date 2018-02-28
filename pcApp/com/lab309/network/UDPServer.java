@@ -16,6 +16,8 @@ import java.net.SocketTimeoutException;
 
 import java.io.Serializable;
 
+import javax.crypto.IllegalBlockSizeException;
+
 /**
  * Class for receiving UDP packets
  *
@@ -106,7 +108,7 @@ public class UDPServer implements Serializable {
 		try {
 
 			do {
-				if (limitOfTries == 0) {
+				if (limitOfTries <= 0) {
 					return null;
 				}
 				this.receiver.receive(this.bufferPacket);
@@ -123,7 +125,7 @@ public class UDPServer implements Serializable {
 		if (this.cipher != null) {
 			try {
 				message = this.cipher.encrypt(this.bufferPacket.getData(), 0, this.bufferPacket.getLength());
-			} catch (Exception e) {
+			} catch (IllegalBlockSizeException e) {
 				e.printStackTrace();
 				return null;
 			}
@@ -141,7 +143,7 @@ public class UDPServer implements Serializable {
 	//waits for a package with the first bytes matching "expected" to be received
 	//returns a datagram offseted to after the expected bytes
 	public UDPDatagram receiveExpected (byte[] expected) throws IOException {
-		byte[] message;
+		byte[] message = null;
 
 		do {
 			this.receiver.receive(this.bufferPacket);
@@ -154,19 +156,15 @@ public class UDPServer implements Serializable {
 					message = this.cipher.encrypt(this.bufferPacket.getData(), 0, this.bufferPacket.getLength());
 					//System.out.println ("Contents after decryption:");	//debug
 					//System.out.println (ByteArrayConverter.toStringRepresentation(message));	//debug
-				} catch (Exception e) {
+				} catch (IllegalBlockSizeException e) {
 					e.printStackTrace();
-					message = null;
+					continue;
 				}
 			} else {
 				message = this.bufferPacket.getData();
 			}
 
 			//System.out.println();	//debug
-
-			if (message == null) {
-				continue;
-			}
 			
 
 			for (int i = 0; i < message.length && i < expected.length; i++) {
@@ -183,7 +181,7 @@ public class UDPServer implements Serializable {
 
 	//null se pacote esperado nao foi recebido
 	public UDPDatagram receiveExpectedOnTime (byte[] expected, int timeInMillis, int limitOfTries) throws IOException {
-		byte[] message;
+		byte[] message = null;
 
 		this.receiver.setSoTimeout(timeInMillis);
 
@@ -191,25 +189,26 @@ public class UDPServer implements Serializable {
 
 			do {
 
-				if (limitOfTries == 0) {
+				if (limitOfTries <= 0) {
 					return null;
 				}
 				this.receiver.receive(this.bufferPacket);
 				limitOfTries--;
+				//System.out.println ("Received " + this.bufferPacket.getLength() + "bytes packet from " + this.bufferPacket.getAddress().toString());	//debug
+				//System.out.println ("Contents before decryption:");	//debug
+				//System.out.println (ByteArrayConverter.toStringRepresentation(this.bufferPacket.getData()));	//debug
 				
 				if (this.cipher != null) {
 					try {
 						message = this.cipher.encrypt(this.bufferPacket.getData(), 0, this.bufferPacket.getLength());
-					} catch (Exception e) {
+						//System.out.println ("Contents after decryption:");	//debug
+						//System.out.println (ByteArrayConverter.toStringRepresentation(message));	//debug
+					} catch (IllegalBlockSizeException e) {
 						e.printStackTrace();
-						message = null;
+						continue;
 					}
 				} else {
 					message = this.bufferPacket.getData();
-				}
-
-				if (message == null) {
-					continue;
 				}
 
 				for (int i = 0; i < message.length && i < expected.length; i++) {

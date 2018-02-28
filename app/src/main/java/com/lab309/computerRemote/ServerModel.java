@@ -23,7 +23,7 @@ public class ServerModel implements Serializable {
 	private InetAddress ip;
 	private String name;
 	private int connectionPort;
-	private byte validationByte;
+	private byte[] validationBytes;
 
 	private Cipher cipher;
 	
@@ -31,11 +31,11 @@ public class ServerModel implements Serializable {
 	private UDPServer feedbackServer;
 
 	/*CONSTRUCTORS*/
-	public ServerModel (InetAddress ip, String name, int connectionPort, byte validationByte) {
+	public ServerModel (InetAddress ip, String name, int connectionPort, byte[] validationBytes) {
 		this.ip = ip;
 		this.name = name;
 		this.connectionPort = connectionPort;
-		this.validationByte = validationByte;
+		this.validationBytes = validationBytes;
 		this.cipher = null;
 	}
 
@@ -53,7 +53,7 @@ public class ServerModel implements Serializable {
 	}
 	
 	public boolean isEncrypted () {
-		return this.validationByte != 0;
+		return this.validationBytes != null;
 	}
 	
 	public Cipher getCipher () {
@@ -75,8 +75,8 @@ public class ServerModel implements Serializable {
 		return this.feedbackServer;
 	}
 	
-	public byte getValidationByte () {
-		return this.validationByte;
+	public byte[] getValidationBytes () {
+		return this.validationBytes;
 	}
 	
 	/*SETTERS*/

@@ -4,7 +4,7 @@ import java.net.InetAddress;
 
 import java.util.LinkedList;
 import java.util.ArrayList;
-import java.util.Map;
+import java.util.HashMap;
 import java.util.Random;
 
 import com.lab309.general.ByteArrayConverter;
@@ -53,7 +53,7 @@ public class Server {
 	}
 
 	/*ATTRIBUTES*/
-	private byte validationByte;
+	private byte[] validationBytes;
 	private Cipher cipher;
 	
 	private String name;
@@ -68,19 +68,19 @@ public class Server {
 	
 	private Steward steward;
 	
-	private Map<InetAddress, Connection> connections;
+	private HashMap<InetAddress, Connection> connections;
+	
+	public static byte[] randomByteArray (int size) {
+		byte[] array = new byte[size];
+		new SecureRandom().nextBytes(array);
+		return array;
+	}
 	
 	/*CONSTRUCTORS*/
-	public Server (byte validationByte, String name, byte[] password) throws IOException {
-		this.validationByte = validationByte;
-		if (validationByte != 0) {
-			if (password == null) {
-				Random rnd = new Random();
-				password = new byte[Constants.passwordSize];
-				rnd.nextBytes(password);
-			}
+	public Server (String name, byte[] password) throws IOException {
+		if (password != null) {
+			this.validationBytes = Server.randomByteArray(Constants.validationBytesSize);
 			this.setPassword(password);
-			System.out.println("Key: "+ByteArrayConverter.toStringRepresentation(this.cipher.getKey()));	//debug
 		} else {
 			this.cipher = null;
 		}
@@ -101,6 +101,8 @@ public class Server {
 		this.signal = new Object();
 		
 		this.steward = new Steward(this.commandQueue);
+		
+		this.connections = new HashMap<InetAddress, Connection>();
 		
 		this.broadcastAvailability();
 		this.waitForConnections();
@@ -125,18 +127,21 @@ public class Server {
 	public void setPassword (byte[] password) {
 		this.cipher = new RC4Cipher(new SHA256Hasher().hash(password));
 	}
+	
+	private void setKey (byte[] key) {
+		this.cipher = new RC4Cipher(key);
+	}
 
 	/*METHODS*/
 	public void broadcastAvailability () { new Thread (new Runnable() { public void run() {
 		try {
 			UDPDatagram received;
 			UDPClient client;
-			UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Server.this.name)+SizeConstants.sizeOfInt+SizeConstants.sizeOfByte);
+			UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfString(Server.this.name)+SizeConstants.sizeOfInt);
 			byte[] helloMsg = ByteArrayConverter.latinStringToArray(Constants.helloMessage, new byte[SizeConstants.sizeOfLatinString(Constants.helloMessage)], 0);
 			
 			packet.getBuffer().pushString(Server.this.name);
 			packet.getBuffer().pushInt(Server.this.connectionServer.getPort());
-			packet.getBuffer().pushByte(Server.this.validationByte);
 			
 			while (true) {
 				//wait for hello message
@@ -166,7 +171,7 @@ public class Server {
 		try {
 			UDPDatagram received;
 			UDPClient client;
-			UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfLatinString(Constants.connectMessage)+SizeConstants.sizeOfInt);
+			UDPDatagram packet = new UDPDatagram(SizeConstants.sizeOfLatinString(Constants.connectMessage)+SizeConstants.sizeOfInt+Constants.validationBytesSize);
 			byte[] connectMessage = ByteArrayConverter.latinStringToArray(Constants.connectMessage, new byte[SizeConstants.sizeOfLatinString(Constants.connectMessage)], 0);
 			byte[] fconnectMessage = ByteArrayConverter.latinStringToArray(Constants.finishConnectMessage, new byte[SizeConstants.sizeOfLatinString(Constants.finishConnectMessage)], 0);
 			Connection connection;
@@ -174,11 +179,13 @@ public class Server {
 
 			packet.getBuffer().pushLatinString(Constants.connectMessage);
 			packet.getBuffer().pushInt(Server.this.commandsServer.getPort());
+			packet.getBuffer().pushByteArray(Server.this.validationBytes);
+			
 			while (true) {
 
 				//wait for connection message
 				received = Server.this.connectionServer.receiveExpected(connectMessage);
-				//System.out.println("Received connection request from " + received.getSender().toString());	//debug
+				System.out.println("Received connection request from " + received.getSender().toString());	//debug
 				
 				answerPort = received.getBuffer().retrieveInt();
 				
@@ -194,8 +201,10 @@ public class Server {
 				client.close();
 				
 				//wait for final handshake
-				received = Server.this.broadcastServer.receiveExpectedOnTime(fconnectMessage, Constants.answerTimeLimit, Constants.wrongAnswerLimit);
+				System.out.println("Waiting for connection confirmation");	//debug
+				received = Server.this.connectionServer.receiveExpectedOnTime(fconnectMessage, Constants.answerTimeLimit, Constants.wrongAnswerLimit);
 				if (received == null) {
+					System.out.println("Connection denied");	//debug
 					continue;
 				}
 				
@@ -204,6 +213,7 @@ public class Server {
 				connection.name = received.getBuffer().retrieveString();
 				
 				//finish establishing connection
+				System.out.println ("Connected to " + received.getSender().toString());	//debug
 				Server.this.connections.put(received.getSender(), connection);
 			}
 
@@ -258,11 +268,9 @@ public class Server {
 	private void waitForCommands () { new Thread ( new Runnable () { public void run () {
 		try {
 			UDPDatagram received;
-			byte [] validationByte = new byte[1];
-			validationByte[0] = Server.this.validationByte;
 
 			while (true) {
-				received = Server.this.commandsServer.receiveExpected(validationByte);
+				received = Server.this.commandsServer.receiveExpected(Server.this.validationBytes);
 				if (Server.this.connections.containsKey(received.getSender())) {
 					Server.this.commandQueue.push(received);
 				}
